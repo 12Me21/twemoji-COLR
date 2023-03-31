@@ -8,8 +8,13 @@ edata.sort((a,b)=>{
 	return a.ident.length - b.ident.length
 })
 
+let glyphs = []
+
 for (let em of edata) {
 	console.warn('processing: ', em.ident)
+	glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
+	if (!em.file)
+		continue
 	
 	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
 	let ls = []
@@ -40,7 +45,12 @@ for (let [str, n] of layers) {
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">\n`+str+"\n</svg>"
 	let lname = "layer"+String(n).padStart(5,"0")
 	Fs.writeFileSync("build/layers/"+lname+".svg", svg)
+	glyphs.push({glyphName:lname})
 }
+
+Fs.writeFileSync("build/glyphs.json", JSON.stringify(glyphs))
+
+console.warn('ok!')
 
 //let files = Fs.readdirSync('twemoji/assets/svg')
 //for (let f of files) {

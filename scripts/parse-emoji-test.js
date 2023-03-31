@@ -3,42 +3,40 @@ import {lines} from './util.js'
 
 let map = new Map()
 
-let override_filename = {
-	'1f441-fe0f-200d-1f5e8-fe0f': '1f441-200d-1f5e8',
-	'263a-fe0f': '263a',
-	'2639-fe0f': '2639',
-	'2620-fe0f': '2620',
-	'2763-fe0f': '2763',
-	'1fae8': false,
+let numbers = {
+	__proto__: 'Zero One Two Three Four Five Six Seven Eight Nine Ten'.split(" "),
+	'*':'asterisk','&':'and','#':'number sign',
+	ñ:'n',Å:'A',é:'e',ô:'o',ç:'c',é:'e',ã:'a',é:'e',í:'i',
+	'.':"",'(':"",')':"",'’':"",'“':"",'”':"",'!':"",
 }
 
 let extras = [
 	{ident: 'ZeroWidthJoiner', codes: ["0x200D"]},
 	{ident: 'VariationSixteen',codes: ['0xFE0F']},
+	
 	{ident: 'Keycap', codes: ["0x20E3"]},
 	{ident: 'NumberSign', codes: ["0x23"]},
-	{codes: ["0x2A"], ident: 'Asterisk'},
-	{codes: ["0x30"], ident: 'Zero'},
-	{codes: ["0x31"], ident: 'One'},
-	{codes: ["0x32"], ident: 'Two'},
-	{codes: ["0x33"], ident: 'Three'},
-	{codes: ["0x34"], ident: 'Four'},
-	{codes: ["0x35"], ident: 'Five'},
-	{codes: ["0x36"], ident: 'Six'},
-	{codes: ["0x37"], ident: 'Seven'},
-	{codes: ["0x38"], ident: 'Eight'},
-	{codes: ["0x39"], ident: 'Nine'},
+	{ident: 'Asterisk', codes: ["0x2A"]},
 ]
+
+for (let i=0;i<10;i++) {
+	extras.push({
+		ident: numbers[i],
+		codes: ["0x"+(30+i).toString(16).toUpperCase()],
+		vs16: true,
+	})
+}
 
 for (let i=0;i<36;i++) {
 	let letter = i.toString(36)
+	let name = i<10 ? numbers[i] : letter
 	extras.push({
-		ident: 'Tag_'+letter,
+		ident: 'Tag_'+name,
 		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16).toUpperCase()],
 	})
 }
 extras.push({
-	ident: 'Tag_cancel',
+	ident: 'Tag_Cancel',
 	codes: ["0xE007F"],
 })
 
@@ -144,6 +142,16 @@ function decode_gender(basename) {
 	return [basename, gender]
 }
 
+function gname(n) {
+	let u = (+n).toString(16).toUpperCase().padStart(4, "0")
+	if (u.length>4)
+		return "u"+u
+	else
+		return "uni"+u
+}
+
+process.stdout.write("export default [\n")
+
 for (let [fullname, data] of map) {
 	if (data.version >= 15)
 		continue
@@ -179,13 +187,7 @@ for (let [fullname, data] of map) {
 	}
 	
 	name = name.replace(/[^-,: A-Za-z_]/g, v=>{
-		let rep = {
-			'*':'asterisk','&':'and','#':'number sign',
-			0:'zero',1:'one',2:'two',3:'three',4:'four',
-			5:'five',6:'six',7:'seven',8:'eight',9:'nine',
-			ñ:'n',Å:'A',é:'e',ô:'o',ç:'c',é:'e',ã:'a',é:'e',í:'i',
-			'.':"",'(':"",')':"",'’':"",'“':"",'”':"",'!':"",
-		}[v]
+		let rep = numbers[v]
 		if (rep==undefined)
 			throw new Error('dont know how '+v)
 		return rep
@@ -211,5 +213,8 @@ for (let [fullname, data] of map) {
 		codes: data.codes,
 		vs16: v16,
 		file: data.file,
+		glyphName: data.codes.map(x=>gname(x)).join("_")
 	})+",\n")
 }
+
+process.stdout.write("]\n")
