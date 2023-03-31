@@ -4,9 +4,9 @@ import edata from '../data/edata.mjs'
 
 let layers = new Map()
 
-edata.sort((a,b)=>{
-	return a.ident.length - b.ident.length
-})
+//edata.sort((a,b)=>{
+//	return a.ident.length - b.ident.length
+//})
 
 let glyphs = []
 
@@ -23,7 +23,7 @@ for (let em of edata) {
 		let m = layers.get(s)
 		if (m==undefined) {
 			m = layers.size
-			"layer"+String(m).padStart(5,"0")
+			m = "layer"+String(m).padStart(5,"0")
 			layers.set(s, m)
 		}
 		ls.push([m, c])
@@ -36,16 +36,16 @@ let meta = edata.map(em=>{
 	return JSON.stringify({ident: em.ident, layers: em.layers, glyphName: em.glyphName})
 }).join("\n,\t")
 
-Fs.writeFileSync("build/layers.mjs", "export default [\n\t"+meta+",\n]")
-
 for (let [str, lname] of layers) {
-	console.warn('writing layer: ',n,'/',layers.size)
+	console.warn('writing layer: ',lname,'/',layers.size)
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">\n`+str+"\n</svg>"
 	Fs.writeFileSync("build/layers/"+lname+".svg", svg)
 	glyphs.push({glyphName:lname})
 }
 
 Fs.writeFileSync("build/glyphs.json", JSON.stringify(glyphs))
+
+Fs.writeFileSync("build/layers.mjs", "export default [\n\t"+meta+",\n]")
 
 console.warn('ok!')
 

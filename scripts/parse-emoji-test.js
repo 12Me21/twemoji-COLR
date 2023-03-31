@@ -22,7 +22,7 @@ let extras = [
 for (let i=0;i<10;i++) {
 	extras.push({
 		ident: numbers[i],
-		codes: ["0x"+(30+i).toString(16).toUpperCase()],
+		codes: ["0x"+(0x30+i).toString(16).toUpperCase()],
 		vs16: true,
 	})
 }
@@ -40,6 +40,14 @@ extras.push({
 	codes: ["0xE007F"],
 })
 
+for (let i=0;i<26;i++) {
+	let letter = (i+10).toString(36)
+	extras.push({
+		ident: 'RegionalIndicator_'+letter,
+		codes: ["0x"+(0x1F1E6+i).toString(16).toUpperCase()],
+	})
+}
+
 let vs16 = {}
 
 // read/parse lines from file
@@ -47,7 +55,7 @@ for await (let line of lines('data/emoji-test.txt')) {
 	let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
 	if (!match) continue
 	let [, codes, qual, str, version, name] = match
-	codes = codes.match(/\w+/g).map(x=>"0x"+x)
+	codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
 	
 	// filter out varsel16s, create list of which chars need them
 	let prev
@@ -142,8 +150,10 @@ function decode_gender(basename) {
 	return [basename, gender]
 }
 
-function gname(n) {
+function gname(n, short) {
 	let u = (+n).toString(16).toUpperCase().padStart(4, "0")
+	if (short)
+		return u
 	if (u.length>4)
 		return "u"+u
 	else
@@ -151,6 +161,17 @@ function gname(n) {
 }
 
 process.stdout.write("export default [\n")
+
+for (let data of extras) {
+	data.glyphName = data.codes.map(x=>gname(x)).join("_")
+	process.stdout.write("\t"+JSON.stringify({
+		ident: data.ident,
+		codes: data.codes,
+		file: null,
+		glyphName: data.codes.map((x,i)=>gname(x,i)).join("_")
+	})+",\n")
+
+}
 
 for (let [fullname, data] of map) {
 	if (data.version >= 15)
@@ -213,7 +234,7 @@ for (let [fullname, data] of map) {
 		codes: data.codes,
 		vs16: v16,
 		file: data.file,
-		glyphName: data.codes.map(x=>gname(x)).join("_")
+		glyphName: data.codes.map((x,i)=>gname(x,i)).join("_")
 	})+",\n")
 }
 

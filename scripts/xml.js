@@ -89,40 +89,46 @@ export function readXml(path, open, close) {
 export class XmlWriter {
 	constructor(filename) {
 		this.stack = []
-		this.fd = fs.open(filename, 'w')
+		this.fd = Fs.openSync(filename, 'w')
+	}
+	putXml() {
+		this.write('<?xml version="1.0" encoding="UTF-8"?>\n')
 	}
 	write(str) {
-		Fs.write(this.fd, str)
+		Fs.writeSync(this.fd, String(str))
 	}
-	open(name, attrs, null) {
-		this.stack.push(name)
+	open(name, attrs, n) {
+		if (!n)
+			this.stack.push(name)
 		this.write("<"+name)
-		for (let a of attrs) {
-			this.write(a)
-			this.write(`="`)
-			this.write(attrs[a])
-			this.write(`"`)
-		}
-		if (null)
-			this.write("/>")
+		if (attrs)
+			for (let a in attrs) {
+				this.write(" ")
+				this.write(a)
+				this.write(`="`)
+				this.write(attrs[a])
+				this.write(`"`)
+			}
+		if (n)
+			this.write("/>\n")
 		else
-			this.write(">")
+			this.write(">\n")
 	}
 	leaf(name, attrs) {
 		return this.open(name, attrs, true)
 	}
-	close(name) {
+	done(name) {
 		let old = this.stack.pop()
 		if (old != name)
 			throw new Error("closed wrong element: got "+name+", expected "+old)
 		this.write("</")
 		this.write(name)
-		this.write(">")
+		this.write(">\n")
 	}
 	finish() {
 		if (this.stack.length)
 			throw new Error("unclosed elements: "+this.stack.join(","))
-		Fs.close(this.fd)
+		Fs.closeSync(this.fd)
 		this.fd = null
 	}
 }

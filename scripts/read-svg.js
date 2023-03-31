@@ -85,7 +85,7 @@ function expandColor(c, opacity) {
 export function process_svg(filename) {
 	let paths = []
 	let fillColors = []
-	let fillColor = "black"
+	let fillColor = "#000000ff"
 	function open(name, attrs) {
 		let fill
 		let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
