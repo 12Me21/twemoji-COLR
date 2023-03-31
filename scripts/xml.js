@@ -85,3 +85,44 @@ export function readXml(path, open, close) {
 		}
 	}
 }
+
+export class XmlWriter {
+	constructor(filename) {
+		this.stack = []
+		this.fd = fs.open(filename, 'w')
+	}
+	write(str) {
+		Fs.write(this.fd, str)
+	}
+	open(name, attrs, null) {
+		this.stack.push(name)
+		this.write("<"+name)
+		for (let a of attrs) {
+			this.write(a)
+			this.write(`="`)
+			this.write(attrs[a])
+			this.write(`"`)
+		}
+		if (null)
+			this.write("/>")
+		else
+			this.write(">")
+	}
+	leaf(name, attrs) {
+		return this.open(name, attrs, true)
+	}
+	close(name) {
+		let old = this.stack.pop()
+		if (old != name)
+			throw new Error("closed wrong element: got "+name+", expected "+old)
+		this.write("</")
+		this.write(name)
+		this.write(">")
+	}
+	finish() {
+		if (this.stack.length)
+			throw new Error("unclosed elements: "+this.stack.join(","))
+		Fs.close(this.fd)
+		this.fd = null
+	}
+}
