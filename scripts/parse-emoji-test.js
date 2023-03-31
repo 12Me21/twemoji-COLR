@@ -3,14 +3,78 @@ import {lines} from './util.js'
 
 let map = new Map()
 
+let override_filename = {
+	'1f441-fe0f-200d-1f5e8-fe0f': '1f441-200d-1f5e8',
+	'263a-fe0f': '263a',
+	'2639-fe0f': '2639',
+	'2620-fe0f': '2620',
+	'2763-fe0f': '2763',
+	'1fae8': false,
+}
+
+let extras = [
+	{ident: 'ZeroWidthJoiner', codes: ["0x200D"]},
+	{ident: 'VariationSixteen',codes: ['0xFE0F']},
+	{ident: 'Keycap', codes: ["0x20E3"]},
+	{ident: 'NumberSign', codes: ["0x23"]},
+	{codes: ["0x2A"], ident: 'Asterisk'},
+	{codes: ["0x30"], ident: 'Zero'},
+	{codes: ["0x31"], ident: 'One'},
+	{codes: ["0x32"], ident: 'Two'},
+	{codes: ["0x33"], ident: 'Three'},
+	{codes: ["0x34"], ident: 'Four'},
+	{codes: ["0x35"], ident: 'Five'},
+	{codes: ["0x36"], ident: 'Six'},
+	{codes: ["0x37"], ident: 'Seven'},
+	{codes: ["0x38"], ident: 'Eight'},
+	{codes: ["0x39"], ident: 'Nine'},
+]
+
+for (let i=0;i<36;i++) {
+	let letter = i.toString(36)
+	extras.push({
+		ident: 'Tag_'+letter,
+		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16).toUpperCase()],
+	})
+}
+extras.push({
+	ident: 'Tag_cancel',
+	codes: ["0xE007F"],
+})
+
+let vs16 = {}
+
+// read/parse lines from file
 for await (let line of lines('data/emoji-test.txt')) {
 	let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
 	if (!match) continue
 	let [, codes, qual, str, version, name] = match
 	codes = codes.match(/\w+/g).map(x=>"0x"+x)
-	version = +version
 	
-	map.set(name, {codes, name})
+	// filter out varsel16s, create list of which chars need them
+	let prev
+	let codes2 = codes.filter(c=>{
+		if (prev) {
+			if (+c == 0xFE0F) {
+				vs16[prev] ??= true
+				return false
+			} else
+				vs16[prev] = false
+		}
+		prev = c
+		return true
+	})
+	
+	let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
+	
+	let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
+	
+	map.set(name, {
+		codes: codes2,
+		name,
+		version: +version,
+		file,
+	})
 }
 
 let override = {
@@ -81,6 +145,9 @@ function decode_gender(basename) {
 }
 
 for (let [fullname, data] of map) {
+	if (data.version >= 15)
+		continue
+	
 	fullname = fullname
 		.replace(/^flag: /, "flag_")
 		.replace(/^keycap: /, "keycap ")
@@ -131,10 +198,18 @@ for (let [fullname, data] of map) {
 	else
 		fullname = name
 	
-	console.log(fullname)
+	//console.log(fullname)
 	
-	let ex = Fs.accessSync('v1/build/normalized/'+fullname+".svg")
+	if (data.file)
+		if (!Fs.existsSync('twemoji/assets/svg/'+data.file+".svg"))
+			console.warn('missing', fullname)
 	
+	let v16 = data.codes.length==1 && vs16[data.codes[0]]
+	
+	process.stdout.write("\t"+JSON.stringify({
+		ident: fullname,
+		codes: data.codes,
+		vs16: v16,
+		file: data.file,
+	})+",\n")
 }
-
-process.exit(0)
