@@ -1,5 +1,5 @@
 import {readXml} from './xml.js'
-import Fs from 'fs'
+//import Fs from 'fs'
 
 const named = {
 	red: '#FF0000',
@@ -10,6 +10,53 @@ const named = {
 	white: '#FFFFFF',
 	azure: '#F0FFFF',
 	lavender: '#E6E6FA',
+}
+
+class Shape {
+	transform = null
+	constructor(attrs) {
+		if (attrs.transform)
+			this.transform = attrs.transform
+	}
+	toString() {
+		let s = "<"+this.name
+		if (this.transform)
+			s += ` transform="${this.transform}"`
+		return s
+	}
+}
+class Path extends Shape {
+	d = ""
+	name = "path"
+	constructor(attrs) {
+		super(attrs)
+		if (attrs.d)
+			this.d = attrs.d
+	}
+	toString(other) {
+		return super.toString() + ` d="${this.d}"` + "/>"
+	}
+}
+class Ellipse extends Shape {
+	cx = 0
+	cy = 0
+	rx = 0
+	ry = 0
+	name = "ellipse"
+	constructor(attrs) {
+		super(attrs)
+		this.cx = Number(attrs.cx || 0)
+		this.cy = Number(attrs.cy || 0)
+		if ('r' in attrs)
+			this.rx = this.ry = Number(attrs.r || 0)
+		else {
+			this.rx = Number(attrs.rx || 0)
+			this.ry = Number(attrs.ry || 0)
+		}
+	}
+	toString(other) {
+		return super.toString() + ` cx="${this.cx}" cy="${this.cy}" rx="${this.rx}" ry="${this.ry}"` + "/>"
+	}
 }
 
 function expandColor(c, opacity) {
@@ -35,35 +82,46 @@ function expandColor(c, opacity) {
 	return c + Math.round(opacity*255).toString(16).padStart(2,'0')
 }
 
-let fillColors = []
-let fillColor = "black"
-function open(name, attrs) {
-	let fill
-	let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
-	if ('fill' in attrs) {
-		fill = expandColor(attrs.fill, opacity)
-	} else {
-		if (opacity != 1.0)
-			fill = expandColor(fillColor.replace(/ff$/i, ""), opacity)
-		else
-			fill = fillColor
+export function process_svg(filename) {
+	let paths = []
+	let fillColors = []
+	let fillColor = "black"
+	function open(name, attrs) {
+		let fill
+		let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
+		if ('fill' in attrs) {
+			fill = expandColor(attrs.fill, opacity)
+		} else {
+			if (opacity != 1.0)
+				fill = expandColor(fillColor.replace(/ff$/i, ""), opacity)
+			else
+				fill = fillColor
+		}
+		if (attrs.transform) {
+			attrs.transform = attrs.transform.replace(/\brotate\((.*?)\)/g, (m,p)=>{
+				return "rotate("+p.replace(/ \b/g, " -")
+			})
+		}
+		if (name=="path") {
+			paths.push([new Path(attrs), fill])
+		} else if (name=="circle" || name=="ellipse") {
+			paths.push([new Ellipse(attrs), fill])
+		} else if (name=="g") {
+			//
+		} else if (name=="svg") {
+			if (attrs.viewBox!="0 0 36 36")
+				throw new Error("bad svg size: "+attrs.viewBox)
+		} else {
+			throw new Error('unknown shape: <'+name+">")
+		}
+		//console.warn('opened', name)
+		fillColors.push(fillColor)
+		fillColor = fill
 	}
-	if (name=="path") {
-		console.warn('path', fill)
+	function close(name) {
+		fillColor = fillColors.pop()
+		//console.warn('closed', name)
 	}
-	//console.warn('opened', name)
-	fillColors.push(fillColor)
-	fillColor = fill
-}
-function close(name) {
-	fillColor = fillColors.pop()
-	//console.warn('closed', name)
-}
-
-
-let files = Fs.readdirSync('twemoji/assets/svg')
-for (let f of files) {
-	fillColors = []
-	fillColor = "black"
-	readXml('twemoji/assets/svg/'+f, open, close)
+	readXml(filename, open, close)
+	return paths
 }
