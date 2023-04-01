@@ -86,6 +86,13 @@ export function process_svg(filename) {
 	let paths = []
 	let fillColors = []
 	let fillColor = "#000000ff"
+	let currentPath = null
+	function addShape(shape, color) {
+		if (!currentPath || currentPath[1]!=color) {
+			paths.push(currentPath = [[], color])
+		}
+		currentPath[0].push(shape)
+	}
 	function open(name, attrs) {
 		let fill
 		let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
@@ -98,14 +105,16 @@ export function process_svg(filename) {
 				fill = fillColor
 		}
 		if (attrs.transform) {
+			// fontforge bug: rotate origin must be negated
 			attrs.transform = attrs.transform.replace(/\brotate\((.*?)\)/g, (m,p)=>{
 				return "rotate("+p.replace(/ \b/g, " -")
 			})
 		}
 		if (name=="path") {
-			paths.push([new Path(attrs), fill])
+			attrs.d += "Z" // fontforge bug: doesn't auto-close the last path
+			addShape(new Path(attrs), fill)
 		} else if (name=="circle" || name=="ellipse") {
-			paths.push([new Ellipse(attrs), fill])
+			addShape(new Ellipse(attrs), fill)
 		} else if (name=="g") {
 			//
 		} else if (name=="svg") {

@@ -40,7 +40,7 @@ for g in glyphList:
 			glyph.width = size
 	else:
 		glyph = f.createChar(-1, name)
-		glyph.importOutlines('build/layers/'+name+".svg", simplify=False)
+		glyph.importOutlines('build/layers/'+name+".svg", simplify=False, correctdir=False)
 		glyph.removeOverlap()
 		glyph.correctDirection()
 		glyph.simplify(0.5, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
