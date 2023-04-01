@@ -10,9 +10,44 @@ let layers = new Map()
 //})
 
 let glyphs = []
+let x = performance.now()
+let w1 = 0, w2 = edata.length, ws = -1
+process.stderr.write("["+".".repeat(100)+"]\x1B[2G")
+let tip, len = 0
 
 for (let em of edata) {
-	console.warn('processing: ', em.ident)
+	let ws2 = Math.round(w1/w2*800)
+	if (ws2!=ws) {
+		let tip2 = ws2 % 8
+		let len2 = ws2 / 8 | 0
+		if (len2 > len) {
+			if (tip) {
+				process.stderr.write("\b")
+				tip = null
+			}
+			process.stderr.write("█".repeat(len2-len))
+			len = len2
+			if (tip2) {
+				process.stderr.write(" ▏▎▍▌▋▊▉"[tip2])
+				tip = tip2
+			}
+		} else {
+			if (tip != tip2) {
+				if (tip) {
+					process.stderr.write("\b")
+					tip = null
+				}
+				if (tip2) {
+					process.stderr.write(" ▏▎▍▌▋▊▉"[tip2])
+					tip = tip2
+				}
+			}
+		}
+		//process.stderr.write("|")
+		ws = ws2
+	}
+	w1++ // is there a builtin for progress bars
+	
 	glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
 	if (!em.file)
 		continue
@@ -41,32 +76,27 @@ for (let em of edata) {
 		ls.push([m, c])
 	}
 	em.layers = ls
-	console.warn("shapes:",sc,"layers:",paths.length,"new:",nl)
+	//process.stderr.write("shapes:"+sc+"layers:"+paths.length+"new:"+nl+"\n")
 }
 //console.log(layers)
+let x2 = performance.now()
+console.warn('\n',x2-x)
+process.exit(0)
 
 let meta = edata.map(em=>{
 	return JSON.stringify({ident: em.ident, layers: em.layers, glyphName: em.glyphName})
 }).join("\n,\t")
 
-let pool = new Set()
-
 for (let [str, [lname, shapes]] of layers) {
 	for (let [i,s] of shapes.entries()) {
 		let lname2 = lname+"_"+i
-		console.warn('writing layer: ',lname2,'/',layers.size, 'pressure:',pool.size)
+		console.warn('writing layer: ',lname2,'/',layers.size)
 		let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">\n`+str+"\n</svg>"
 		
-		let p = Fs.promises.writeFile("build/layers/"+lname2+".svg", svg)
-		pool.add(p)
-		p.then(x=>pool.delete(p))
-		if (pool.size >= 10)
-			await Promise.any([...pool])
+		Fs.writeFileSync("build/layers/"+lname2+".svg", svg)
 	}
 	glyphs.push({glyphName:lname,shapeCount:shapes.length})
 }
-
-await Promise.all([...pool])
 
 Fs.writeFileSync("build/glyphs.json", JSON.stringify(glyphs))
 

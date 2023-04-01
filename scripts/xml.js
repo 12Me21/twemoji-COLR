@@ -18,14 +18,23 @@ export function readXml(path, open, close) {
 	
 	let i = 0
 	while (1) {
+		let prev = i
 		i = xml.indexOf("<", i)
-		if (i==-1)
+		
+		if (i<0)
 			break
 		
 		main.lastIndex = i+1
 		let match = main.exec(xml)
-		if (!match)
+		if (!match) {
+			if (xml.substr(i+1, 3)=="!--") {
+				i = xml.indexOf("-->", i+2)
+				if (i<0)
+					throw new Error('xml syntax error, bad comment')
+				continue
+			}
 			throw new Error('xml syntax error, bad char after ‘<’')
+		}
 		i = main.lastIndex
 		
 		let name = match[0]
