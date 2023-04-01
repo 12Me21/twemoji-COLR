@@ -1,5 +1,6 @@
 import {process_svg} from './read-svg.js'
 import Fs from 'fs'
+import Bar from './progress.js'
 
 import edata from '../data/edata.mjs'
 
@@ -10,17 +11,12 @@ let layers = new Map()
 //})
 
 let glyphs = []
-let x = performance.now()
-let w1 = 0, w2 = edata.length, ws = -1
-process.stderr.write("\n\x1B[A💣\\"+"_".repeat(97)+"\x1B7")
-
+let bar = new Bar(edata.length)
+let w1 = 0
+let totalshapes = 0
+bar.start()
 for (let em of edata) {
-	let ws2 = Math.round(w1/w2*100)
-	if (ws2!=ws) {
-		process.stderr.write("\x1B8\b\x1B7🔥\n")
-		ws = ws2
-	}
-	w1++ // is there a builtin for progress bars
+	bar.step(w1++)
 	
 	glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
 	if (!em.file)
@@ -47,34 +43,39 @@ for (let em of edata) {
 			m = "layer"+String(m).padStart(5,"0")
 			layers.set(s, [m, p])
 			nl++
+			totalshapes+=p.length
 		} else {
 			0,[m] = m
 		}
 		ls.push([m, c])
 	}
 	em.layers = ls
+	//totalshapes += sc
 	//process.stderr.write("shapes:"+sc+"layers:"+paths.length+"new:"+nl+"\n")
 }
-process.stderr.write('\x1B8💥\n')
+bar.end()
 //console.log(layers)
-let x2 = performance.now()
-console.warn(x2-x)
-process.exit(0)
 
 let meta = edata.map(em=>{
 	return JSON.stringify({ident: em.ident, layers: em.layers, glyphName: em.glyphName})
 }).join("\n,\t")
 
+console.warn("layers:", layers.size, "shapes:", totalshapes)
+bar = new Bar(totalshapes)
+w1 = 0
+bar.start()
 for (let [str, [lname, shapes]] of layers) {
 	for (let [i,s] of shapes.entries()) {
+		bar.step(w1++)
 		let lname2 = lname+"_"+i
-		console.warn('writing layer: ',lname2,'/',layers.size)
-		let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">\n`+str+"\n</svg>"
+		//console.warn('writing layer: ',lname2,'/',layers.size)
+		let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">\n`+s.toString()+"\n</svg>"//ugh we call tostring twice here.. what if we just split the existing string on \n 
 		
 		Fs.writeFileSync("build/layers/"+lname2+".svg", svg)
 	}
 	glyphs.push({glyphName:lname,shapeCount:shapes.length})
 }
+bar.end()
 
 Fs.writeFileSync("build/glyphs.json", JSON.stringify(glyphs))
 
