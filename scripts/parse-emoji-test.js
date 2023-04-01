@@ -19,6 +19,10 @@ let extras = [
 	{ident: 'Asterisk', codes: ["0x2A"]},
 ]
 
+let suit_hack1 = [], suit_hack2 = []
+
+let skin_names = ['light skin tone','medium-light skin tone','medium skin tone','medium-dark skin tone','dark skin tone']
+
 for (let i=0;i<10;i++) {
 	extras.push({
 		ident: numbers[i],
@@ -42,9 +46,13 @@ extras.push({
 
 for (let i=0;i<26;i++) {
 	let letter = (i+10).toString(36)
+	let code = (0x1F1E6+i).toString(16)
+	let codes = ["0x"+code.toUpperCase()]
 	extras.push({
 		ident: 'RegionalIndicator_'+letter,
-		codes: ["0x"+(0x1F1E6+i).toString(16).toUpperCase()],
+		codes,
+		file: code,
+		glyphName: gname(codes)
 	})
 }
 
@@ -62,10 +70,17 @@ for await (let line of lines('data/emoji-test.txt')) {
 	let codes2 = codes.filter(c=>{
 		if (prev) {
 			if (+c == 0xFE0F) {
-				vs16[prev] ??= true
+				if (vs16[prev]===undefined)
+					vs16[prev] = 2
+				else
+					vs16[prev] = 1
 				return false
-			} else
-				vs16[prev] = false
+			} else {
+				if (vs16[prev] >= 1) {
+					vs16[prev] = 1
+				} else
+					vs16[prev] = 0
+			}
 		}
 		prev = c
 		return true
@@ -81,6 +96,52 @@ for await (let line of lines('data/emoji-test.txt')) {
 		version: +version,
 		file,
 	})
+	
+	// append this one here
+	if (name=="Statue of Liberty") {
+		map.set(name, {
+			codes: ['0xE50A'],
+			name: "Shibuya",
+			version: -1,
+			file: 'e50a',
+		})
+	}
+	if (name=="skier") {
+		let code = 0x1F3FB
+		for (let x of skin_names) {
+			let name2 = name+": "+x
+			map.set(name2, {
+				codes: codes2.concat(["0x"+code.toString(16).toUpperCase()]),
+				name: name2,
+				version: -1,
+				file: '26f7-'+code.toString(16),
+			})
+			code++
+		}
+	}
+	if (name.startsWith("person in suit levitating")) {
+		if (!name.includes(":"))
+			file += "-fe0f"
+		suit_hack1.push({
+			codes: codes2.concat(["0x200D","0x2642","0xFE0F"]),
+			name: name.replace("person", "man"),
+			version: -1,
+			file: file+"-200d-2642-fe0f",
+		})
+		suit_hack2.push({
+			codes: codes2.concat(["0x200D","0x2640","0xFE0F"]),
+			name: name.replace("person", "woman"),
+			version: -1,
+			file: file+"-200d-2640-fe0f"
+		})
+		// flush
+		if (name=="person in suit levitating: dark skin tone") {
+			for (let x of suit_hack1)
+				map.set(x.name, x)
+			for (let x of suit_hack2)
+				map.set(x.name, x)
+		}
+	}
 }
 
 let override = {
@@ -150,27 +211,28 @@ function decode_gender(basename) {
 	return [basename, gender]
 }
 
-function gname(n, short) {
-	let u = (+n).toString(16).toUpperCase().padStart(4, "0")
-	if (short)
-		return u
-	if (u.length>4)
-		return "u"+u
-	else
-		return "uni"+u
+function gname(codes) {
+	return codes.map((n,short)=>{
+		let u = (+n).toString(16).toUpperCase().padStart(4, "0")
+		if (short)
+			return u
+		if (u.length>4)
+			return "u"+u
+		else
+			return "uni"+u
+	}).join("_")
 }
 
 process.stdout.write("export default [\n")
 
 for (let data of extras) {
-	data.glyphName = data.codes.map(x=>gname(x)).join("_")
+	data.glyphName = gname(data.codes)
 	process.stdout.write("\t"+JSON.stringify({
 		ident: data.ident,
 		codes: data.codes,
 		file: null,
-		glyphName: data.codes.map((x,i)=>gname(x,i)).join("_")
+		glyphName: data.glyphName
 	})+",\n")
-
 }
 
 for (let [fullname, data] of map) {
@@ -225,16 +287,16 @@ for (let [fullname, data] of map) {
 	
 	if (data.file)
 		if (!Fs.existsSync('twemoji/assets/svg/'+data.file+".svg"))
-			console.warn('missing', fullname)
+			console.warn('missing', fullname, data.file)
 	
-	let v16 = data.codes.length==1 && vs16[data.codes[0]]
+	let v16 = data.codes.length==1 && vs16[data.codes[0]] || undefined
 	
 	process.stdout.write("\t"+JSON.stringify({
 		ident: fullname,
 		codes: data.codes,
 		vs16: v16,
 		file: data.file,
-		glyphName: data.codes.map((x,i)=>gname(x,i)).join("_")
+		glyphName: gname(data.codes)
 	})+",\n")
 }
 

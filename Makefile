@@ -4,7 +4,7 @@ MAKEFLAGS += --no-builtin-rules
 .NOTPARALLEL:
 
 build/Twemoji.otf: build/glyphs.otf build/gsub.ttx build/cpal.ttx build/colr.ttx data/import.ttx
-	ttx -v -m build/glyphs.otf -o build/Twemoji.otf data/import.ttx
+	ttx -b -v -m build/glyphs.otf -o build/Twemoji.otf data/import.ttx
 
 data/edata.mjs: data/emoji-test.txt scripts/parse-emoji-test.js
 	node scripts/parse-emoji-test.js >data/edata.mjs
