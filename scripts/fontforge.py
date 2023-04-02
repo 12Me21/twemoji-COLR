@@ -52,7 +52,6 @@ for g in glyphList:
 		glyph.canonicalStart()
 		glyph.width = size
 		
-# TTF
 f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))
 
 # todo: use setTableData to create cpal/colr

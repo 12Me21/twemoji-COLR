@@ -1,6 +1,8 @@
 import Fs from 'fs'
 import {lines} from './util.js'
 
+// todo: theres one more unsupported set of redundant ligatures
+
 let map = new Map()
 
 let numbers = {
@@ -12,11 +14,11 @@ let numbers = {
 
 let extras = [
 	{ident: 'ZeroWidthJoiner', codes: ["0x200D"]},
-	{ident: 'VariationSixteen',codes: ['0xFE0F']},
+	{ident: 'VariationSixteen',codes: ['0xFE0F']}, // do we need this?
 	
-	{ident: 'Keycap', codes: ["0x20E3"]},
-	{ident: 'NumberSign', codes: ["0x23"]},
-	{ident: 'Asterisk', codes: ["0x2A"]},
+	{ident: 'Keycap', codes: ["0x20E3"], file: '1f7e6'},
+	{ident: 'NumberSign', codes: ["0x23"], file: '23-20e3', vs16: 2},
+	{ident: 'Asterisk', codes: ["0x2A"], file: '2a-20e3', vs16: 2},
 ]
 
 let suit_hack1 = [], suit_hack2 = []
@@ -24,23 +26,25 @@ let suit_hack1 = [], suit_hack2 = []
 let skin_names = ['light skin tone','medium-light skin tone','medium skin tone','medium-dark skin tone','dark skin tone']
 
 for (let i=0;i<10;i++) {
+	let code = (0x30+i).toString(16)
 	extras.push({
 		ident: numbers[i],
-		codes: ["0x"+(0x30+i).toString(16).toUpperCase()],
-		vs16: true,
+		codes: ["0x"+code.toUpperCase()],
+		file: code+"-20e3",
+		vs16: 2,
 	})
 }
 
 for (let i=0;i<36;i++) {
 	let letter = i.toString(36)
-	let name = i<10 ? numbers[i] : letter
+	let name = i<10 ? numbers[i].toLowerCase() : letter
 	extras.push({
 		ident: 'Tag_'+name,
 		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16).toUpperCase()],
 	})
 }
 extras.push({
-	ident: 'Tag_Cancel',
+	ident: 'Tag_cancel',
 	codes: ["0xE007F"],
 })
 
@@ -99,7 +103,7 @@ for await (let line of lines('data/emoji-test.txt')) {
 	
 	// append this one here
 	if (name=="Statue of Liberty") {
-		map.set(name, {
+		map.set("Shibuya", {
 			codes: ['0xE50A'],
 			name: "Shibuya",
 			version: -1,
@@ -230,8 +234,9 @@ for (let data of extras) {
 	process.stdout.write("\t"+JSON.stringify({
 		ident: data.ident,
 		codes: data.codes,
-		file: null,
-		glyphName: data.glyphName
+		file: data.file || null,
+		glyphName: data.glyphName,
+		vs16: data.vs16,
 	})+",\n")
 }
 
