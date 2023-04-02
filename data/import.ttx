@@ -3,4 +3,5 @@
   <COLR src="../build/colr.ttx"/>
   <CPAL src="../build/cpal.ttx"/>
   <GSUB src="../build/gsub.ttx"/>
+  <hmtx src="../build/hmtx.ttx"/>
 </ttFont>

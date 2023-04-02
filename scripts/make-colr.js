@@ -1,5 +1,6 @@
 import {XmlWriter} from './xml.js'
 import layers from '../build/layers.mjs'
+import Bar from './progress.js'
 
 let colors = new Map()
 
@@ -13,11 +14,14 @@ w.open('COLR')
 
 ~w.leaf('version', {value: 0})
 
+let bar = new Bar(layers.length)
+let w1 = 0
+bar.start()
 for (let g of layers) {
+	bar.step(w1++)
 	if (!g.layers)
 		continue
 	w.open('ColorGlyph', {name: g.glyphName})
-	console.warn(g.ident)
 	
 	for (let l of g.layers) {
 		let color = l[1], cid
@@ -36,6 +40,7 @@ w.done('COLR')
 w.done('ttFont')
 
 w.finish()
+bar.end()
 
 
 w = new XmlWriter('build/cpal.ttx')
@@ -57,3 +62,27 @@ w.done('CPAL')
 w.done('ttFont')
 
 w.finish()
+
+
+import glyphs from '../build/glyphs.json' assert {type:'json'}
+
+w = new XmlWriter('build/hmtx.ttx')
+
+w.putXml()
+
+w.open('ttFont', {ttLibVersion: "4.34"})
+
+w.open('hmtx')
+~w.leaf('mtx', {name:'.notdef', width: 720, lsb:0})
+for (let g of glyphs) {
+	let zero = g.glyphName=="uni200D" || g.glyphName=="uniFE0F" || g.glyphName=="uni20E3" || g.glyphName.startsWith("uE00")
+	
+	w.leaf('mtx', {name:g.glyphName, width: zero ? 0 : 720, lsb:0})
+}
+w.done('hmtx')
+
+w.done('ttFont')
+
+w.finish()
+
+// todo: we probably have to set the numberofmetrics field in HEAD
