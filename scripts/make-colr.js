@@ -21,7 +21,7 @@ for (let g of layers) {
 	bar.step(w1++)
 	if (!g.layers)
 		continue
-	w.open('ColorGlyph', {name: g.glyphName})
+	w.open('ColorGlyph', {name: g.glyphName.replace(/^uni(?=...._)/,'u')})
 	
 	for (let l of g.layers) {
 		let color = l[1], cid
