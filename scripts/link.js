@@ -3,13 +3,39 @@ import Fs from 'fs'
 
 let orig = new Set(Fs.readdirSync('twemoji/assets/svg/'))
 
+let bases = {__proto__:null}
+
+for (let em of edata) {
+	let [base, ...flags] = em.ident.split("_")
+	if (flags.length && !bases[base]) {
+		Fs.mkdirSync("original/"+base, {recursive:true})
+		bases[base] = true
+	}
+}
+
 for (let em of edata) {
 	//if (!orig.has(em.file+".svg")) {
 	//	console.warn("MISSING:",em.ident)
 	//}
+	let [base, ...flags] = em.ident.split("_")
+	
+	let path2
 	let path = "../twemoji/assets/svg/"+em.file+".svg"
-	let path2 = "original/"+em.ident+".svg"
-	Fs.unlinkSync(path2)
+	
+	if (bases[base]) {
+		flags = flags.join("_") || "null"
+		path2 = base+"/"+flags
+		path = "../" + path
+	} else {
+		path2 = em.ident
+	}
+	path2 = "original/"+path2+".svg"	
+	
+	try {
+		Fs.unlinkSync(path2)
+	} catch(e) {
+		
+	}
 	if (/[🇦-🇿]/u.test(String.fromCodePoint(...em.codes)))
 		continue
 	Fs.symlinkSync(path, path2)

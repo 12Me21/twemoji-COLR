@@ -48,7 +48,7 @@ extras.push({
 	codes: ["0xE007F"],
 })
 
-for (let i=0;i<26;i++) {
+/*for (let i=0;i<26;i++) {
 	let letter = (i+10).toString(36)
 	let code = (0x1F1E6+i).toString(16)
 	let codes = ["0x"+code.toUpperCase()]
@@ -58,7 +58,7 @@ for (let i=0;i<26;i++) {
 		file: code,
 		glyphName: gname(codes)
 	})
-}
+}*/
 
 let vs16 = {}
 
@@ -180,12 +180,12 @@ let extnames = {
 	'medium-dark skin tone': 'skin4',
 	'dark skin tone': 'skin5',
 	
-	'blond hair':'blondHair',
-	'red hair':'redHair',
-	'white hair':'whiteHair',
-	'curly hair':'curlyHair',
-	'bald':'bald',
-	'beard':'beard',
+	'blond hair':'person with blond hair',
+	'red hair':'person with red hair',
+	'white hair':'person with white hair',
+	'curly hair':'person with curly hair',
+	'bald':'bald person',
+	'beard':'person with beard',
 }
 
 function decode_gender(basename) {
@@ -243,6 +243,8 @@ for (let data of extras) {
 for (let [fullname, data] of map) {
 	if (data.version >= 15)
 		continue
+	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
+		continue
 	
 	fullname = fullname
 		.replace(/^flag: /, "flag_")
@@ -267,8 +269,14 @@ for (let [fullname, data] of map) {
 	
 	if (ext) {
 		ext = ext.split(", ").map(e=>{
-			return extnames[e] ?? e
+			let f = extnames[e]
+			if (f && f.includes(" ")) {
+				name = f
+				return null
+			}
+			return f ?? e
 		})
+		ext = ext.filter(e=>e)
 		ext = ext.sort((a,b)=>{
 			return (a.startsWith('skin') - b.startsWith('skin'))
 		})
@@ -284,7 +292,7 @@ for (let [fullname, data] of map) {
 	name = name.toLowerCase().replace(/(?:[- ]+|^|(_))(.)/g, (m,s,a)=>(s||"")+a.toUpperCase())
 	
 	if (ext)
-		fullname = name+"_"+ext.join("_")
+		fullname = [name,...ext].join("_")
 	else
 		fullname = name
 	

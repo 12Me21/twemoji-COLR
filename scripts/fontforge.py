@@ -26,6 +26,7 @@ f.ascent = size-descent
 #f.hhea_ascent = f.ascent
 #f.hhea_descent = f.descent
 
+guessed_gids = [[],[],[]]
 
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
@@ -64,7 +65,7 @@ def create_layer(name, shapecount):
 	glyph.canonicalContours()
 	glyph.canonicalStart()
 	glyph.width = size
-	
+
 for g in glyphList:
 	name = str(g['glyphName'])
 	sys.stderr.write('glyph '+name+"\n")
@@ -77,7 +78,7 @@ for g in glyphList:
 			create_ligature(codes)
 	else:
 		create_layer(name, g['shapeCount'])
-		
+
 f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))
 
 # todo: use setTableData to create cpal/colr
