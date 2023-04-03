@@ -30,8 +30,9 @@ class Path extends Shape {
 	name = "path"
 	constructor(attrs) {
 		super(attrs)
-		if (attrs.d)
+		if (attrs.d) {
 			this.d = attrs.d
+		}
 	}
 	toString(other) {
 		return super.toString() + ` d="${this.d}"` + "/>"
@@ -107,15 +108,37 @@ export function process_svg(filename) {
 		if (attrs.transform) {
 			// fontforge bug: rotate origin must be negated
 			attrs.transform = attrs.transform.replace(/\brotate\((.*?)\)/g, (m,p)=>{
-				return "rotate("+p.replace(/ \b/g, " -")
+				//[+-]? ([0-9]* ".")? [0-9]+ ([Ee] [+-]? [0-9]+)?
+				// -?([0-9]*[.])?[0-9]+
+				// [0-9]*[.]?[0-9]+
+				let nums = p.match(/[^\s,]+/g)
+				if (nums.length==3) {
+					let [a,x,y] = nums
+					if (name=="circle" || name=="ellipse") {
+						let {cx=0, cy=0} = attrs
+						if (Math.abs(cx-x) < 0.01 && Math.abs(cy-y) < 0.01) {
+							x = +cx
+							y = +cy
+							console.warn("rounded center rotation:", x, y)
+						} else {
+							console.warn("non-central rotation:", filename, attrs)
+						}
+					}
+					return `rotate(${a}, ${-x}, ${-y})`
+				} else if (nums.length != 1)
+					throw new Error('invalid rotate transform: '+attrs.transform)
+				return m
 			})
+			// todo: ellipses use transform=rotate(angle,cx,cy), but sometimes this contains rounding errors
 		}
 		if (name=="path") {
-			attrs.d += "Z" // fontforge bug: doesn't auto-close the last path
+			attrs.d += "Z" // fontforge bug?: doesn't auto-close the last path
 			addShape(new Path(attrs), fill)
 		} else if (name=="circle" || name=="ellipse") {
 			addShape(new Ellipse(attrs), fill)
 		} else if (name=="g") {
+			if (attrs.transform)
+				throw new Error('group transform not supported')
 			//
 		} else if (name=="svg") {
 			if (attrs.viewBox!="0 0 36 36")

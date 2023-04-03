@@ -8,7 +8,7 @@ let flagmap2 = {}
 for (let em of edata) {
 	let [base, ...flags] = em.ident.split("_")
 	if (flags.length==0) {
-		basemap[base] = {}
+		basemap[base] = {"":String.fromCodePoint(...em.codes)}
 		baselist.push(em)
 	}
 }
@@ -26,13 +26,6 @@ for (let em of edata) {
 				f = "mixed"
 			return f
 		})
-		flags = flags.filter(x=>{
-			if (x=="blondHair" || x=="redHair" || x=="bald" || x=="whiteHair" || x=="beard" || x=="curlyHair") {
-				base = base + "With" + x[0].toUpperCase()+x.slice(1)
-				return false
-			}
-			return true
-		})
 		
 		let b = basemap[base]
 		if (!b) {
@@ -45,11 +38,11 @@ for (let em of edata) {
 		}
 		em.ident = [base, ...flags].join("_")
 		
-		b[flags] = em.codes
+		b[flags] = String.fromCodePoint(...em.codes)
 	}
 }
 
-console.log(basemap)
+console.log(JSON.stringify(basemap))
 
 let optionsets = {
 	gender: ["neutral", "male", "female", "mixed"],
