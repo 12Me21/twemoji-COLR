@@ -48,7 +48,7 @@ extras.push({
 	codes: ["0xE007F"],
 })
 
-/*for (let i=0;i<26;i++) {
+for (let i=0;i<26;i++) {
 	let letter = (i+10).toString(36)
 	let code = (0x1F1E6+i).toString(16)
 	let codes = ["0x"+code.toUpperCase()]
@@ -58,7 +58,7 @@ extras.push({
 		file: code,
 		glyphName: gname(codes)
 	})
-}*/
+}
 
 let vs16 = {}
 
@@ -241,10 +241,10 @@ for (let data of extras) {
 }
 
 for (let [fullname, data] of map) {
-	if (data.version >= 15)
-		continue
-	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
-		continue
+//	if (data.version >= 15)
+//		continue
+//	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
+//		continue
 	
 	fullname = fullname
 		.replace(/^flag: /, "flag_")
@@ -314,3 +314,10 @@ for (let [fullname, data] of map) {
 }
 
 process.stdout.write("]\n")
+
+// types:
+// simple (single variant)
+// skin color (e.g. hands)
+// gender (some people emojis)
+// gender, skin color (most people emojis)
+// couple (i.e. gender, skin color except with more gender and skin color options)
