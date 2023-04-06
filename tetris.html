@@ -21,6 +21,9 @@
 	}
 	#\$list {
 		overflow-y: scroll;
+		display: grid;
+		grid-template-columns: repeat(4,80px);
+		grid-auto-rows: 90px;
 	}
 	main {
 		display: grid;
@@ -29,7 +32,7 @@
 	}
 	drag-item {
 		border: 2px outset salmon;
-		height: 72px;
+		height: 72x;
 		display: grid;
 		grid-template:
 			"svg up top" 1fr
@@ -42,7 +45,11 @@
 		width: 72px;
 		grid-area: svg;
 	}
-	
+	li {
+		display: block;
+		margin: 0;
+		padding: 0;
+	}
 	li.drop {
 		background: #FF02;
 		outline: 2px dotted yellow;
@@ -135,38 +142,10 @@
 		}
 	}
 	
-	
 	function dlayer(elem) {
 		let l = document.createElement('drag-item')
 		l.setAttribute('draggable', true)
-		let up = document.createElement('button')
-		up.append('🡅')
-		up.onclick = ev=>{
-			l.previousElementSibling?.before(l)
-			elem._sister.previousElementSibling?.before(elem._sister)
-		}
-		let down = document.createElement('button')
-		down.append('🡇')
-		down.onclick = ev=>{
-			l.nextElementSibling?.after(l)
-			elem._sister.nextElementSibling?.after(elem._sister)
-		}
-		let top = document.createElement('button')
-		top.append('⏫')
-		top.onclick = ev=>{
-			l.parentElement.firstElementChild?.before(l)
-			elem._sister.parentElement.firstElementChild?.before(elem._sister)
-		}
-		let bottom = document.createElement('button')
-		bottom.append('⏬')
-		bottom.onclick = ev=>{
-			l.parentElement.lastElementChild?.after(l)
-			elem._sister.parentElement.lastElementChild?.after(elem._sister)
-		}
-		
-		l.append(elem,up,down,top,bottom)
-		
-		
+		l.append(elem)
 		let m = document.createElement('li')
 		dropzone(m)
 		m.append(l)
@@ -178,6 +157,7 @@
 		let p = svg.cloneNode(false)
 		p.append(c)
 		let q = p.cloneNode(true)
+		q.style.stroke="red"
 		q._sister = p
 		$box.append(p)
 		$list.append(dlayer(q))
