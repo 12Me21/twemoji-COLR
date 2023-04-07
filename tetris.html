@@ -1,6 +1,7 @@
 <!doctype html><meta charset=utf-8>
 
 <div style=display:none;>
+	<canvas width=32 height=32 id=$canvas></canvas>
 	<svg id=$svg fill="inherit" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
 		<marker
 			id="dot"
@@ -31,11 +32,19 @@
 		grid-area: box;
 	}
 	#\$pics {
-		display: flex;
-		flex-flow: column;
+		display: grid;
 	}
-	#\$pics > * {
-		flex: 0mm;
+	#\$pics > *:nth-child(3n+1) {
+		grid-area: 1/1/1/1;
+	}
+	#\$pics > *:nth-child(3n+2) {
+		grid-area: 2/1/2/1;
+	}
+	#\$pics > *:nth-child(3n+3) {
+		grid-area: 3/1/3/1;
+	}
+	#\$pics > *:nth-child(n+4) {
+		mix-blend-mode: difference;
 	}
 	#\$orig {
 		display: grid;
@@ -74,6 +83,8 @@
 		/ 72px 1fr;
 		grid-auto-flow: row;
 		place-items: center start;
+		background-image: var(--bitmap);
+		background-size: auto 100%;
 	}
 	drag-item > div{
 		display: flex;
@@ -81,7 +92,7 @@
 	}
 	label {
 		position: relative;
-		width: 100%;
+		width: 1em;
 		height: 100%;
 		user-select: none;
 	}
@@ -99,28 +110,34 @@
 		touch-action: manipulation;
 		position: absolute;
 	}
-	label > input + span {
+	label > input[type=checkbox] + span {
 		text-align: center;
 		color: gray;
 		background: lavender;
 	}
-	label > input:checked + span {
+	label > input[type=checkbox]:checked + span {
 		font-weight: bold;
 		background: #2A2;
 		color: white;
 	}
-	label > input:checked[value=male] + span {
+	label > input[type=checkbox]:checked[name=male] + span {
 		background: #44B;
 	}
-	label > input:checked[value=female] + span {
+	label > input[type=checkbox]:checked[name=female] + span {
 		background: #C48;
+	}
+	svg {
+		background: white;
+	}
+	drag-item > svg *[fill^="{"] {
+		stroke: red;
 	}
 	drag-item > svg {
 		width: 72px;
 		height: 72px;
 		grid-area: svg;
 		paint-order: stroke;
-		stroke: currentColor;
+		stroke: black;
 	}
 	li {
 		flex: none;
@@ -144,8 +161,6 @@
 	}
 	
 </style>
-
-<canvas width=72 height=72 id=$canvas></canvas>
 
 <div><input id=$load><button onclick='go($load.value)'>Load</button></div>
 <main>
@@ -273,13 +288,82 @@
 		c.checked = true
 	}
 	
+	function fmt(w) {
+		return Math.round(w/1e2)/1e3
+	}
+	function rnd(w) {
+		return w*1e5
+	}
+	
+	function convertToAbsolute(path){
+		let segs = path.pathSegList
+		let outs = [], out = ""
+		let x=0, y=0
+		let x0=0, y0=0
+		for (let i=0,len=segs.numberOfItems; i<len; ++i){
+			let s = segs.getItem(i)
+			let c = s.pathSegTypeAsLetter
+			let ox = 0, oy = 0
+			if ('mlhvcsqta'.includes(c)) {
+				c = c.toUpperCase()
+				ox = x, oy = y
+			}
+			if ('x' in s) x = ox+rnd(s.x)
+			if ('y' in s) y = oy+rnd(s.y)
+			if (c=='M') {
+				x0 = x, y0 = y
+				if (out) {
+					out += 'z'
+					outs.push(out)
+					out = ""
+				}
+			} else if (c=='z' || c=='Z') {
+				out += 'z'
+				x = x0, y = y0
+				if (out) {
+					outs.push(out)
+					out = ""
+				}
+				continue
+			}
+			
+			out += c
+			if (c=='A')
+				out += ' '+fmt(rnd(s.r1))+' '+fmt(rnd(s.r2))+' '+fmt(rnd(s.angle))+' '+s.largeArcFlag+' '+s.sweepFlag
+			if ('x1' in s)
+				out += ' '+fmt(ox+rnd(s.x1))+' '+fmt(oy+rnd(s.y1))
+			if ('x2' in s)
+				out += ' '+fmt(ox+rnd(s.x2))+' '+fmt(oy+rnd(s.y2))
+			if ('x' in s)
+				out += ' '+fmt(ox+rnd(s.x))
+			if ('y' in s)
+				out += ' '+fmt(oy+rnd(s.y))
+		}
+		if (out) {
+			out += 'z'
+			outs.push(out)
+			out = ""
+		}
+		return outs
+	}
+	
 	let c2d = $canvas.getContext('2d')
+	c2d.scale(c2d.canvas.width / 36, c2d.canvas.height / 36)
 	function make_bitmap(shape) {
+		c2d.fillStyle = 'white'
+		c2d.fillRect(0, 0, 36,36)
+		c2d.fillStyle = 'black'
 		if (shape.nodeName=='path') {
 			let path = new Path2D(shape.getAttribute('d'))
 			c2d.fill(path)
 		}
-		let url = c2d.canvas.toDataURL()
+		else if (shape.nodeName=='circle') {
+			c2d.beginPath()
+			c2d.arc(shape.getAttribute('cx')||0, shape.getAttribute('cy')||0, shape.getAttribute('r')||0, 0, Math.PI*2)
+			c2d.fill()
+		}
+		let url = c2d.canvas.toDataURL('image/png', 0.8)
+		//console.log(url)
 		return url
 		//return c2d.getImageData(0,0,c2d.canvas.width,c2d.canvas.height)
 	}
@@ -295,14 +379,16 @@
 			x = x.documentElement
 			let svg = x
 			let j=0
-			for (let shape of x.children) {
-				let key = shape.outerHTML
+			
+			let addshape = (shape,above)=>{
+				let key = make_bitmap(shape,above)//shape.outerHTML
 				let existing = layermap.get(key)
+				j++;
 				if (existing) {
+					existing._order = j+i/8
 					set_gender(existing, gender)
-					continue
+					return
 				}
-				
 				
 				let c = shape.cloneNode(true)
 				c._sister = shape.cloneNode(true)
@@ -310,11 +396,29 @@
 				svg2.append(c)
 				let g = dlayer(svg2,gender)
 				g._order = j+i/8
+				g.style.setProperty('--bitmap', 'url("'+key+'")')
 				lists.push(g)
 				//$list.prepend()
 				
 				layermap.set(key, g)
-				j++
+				
+			}
+			let children = [...x.children]
+			let shape
+			while (shape = children.shift()) {
+				if (shape.nodeName == 'path') {
+					let fill = shape.getAttribute('fill')
+					if (fill[0]=='{')
+						shape.setAttribute('fill', fill.match(/{(.*?)[|]/)[1])
+					let paths = convertToAbsolute(shape)
+					for (let path of paths) {
+						let n = shape.cloneNode(false)
+						n.setAttribute('d', path)
+						addshape(n, children)
+					}
+					continue
+				}
+				addshape(shape, children)
 			}
 			return x
 		})
@@ -328,7 +432,7 @@
 		$pics.append(...out)
 		$svg = out
 		clean_rows()
-p	}
+	}
 </script>
 todo:
 - diff between orig/edited
