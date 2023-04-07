@@ -129,7 +129,7 @@
 	svg {
 		background: white;
 	}
-	drag-item > svg *[fill^="{"] {
+	drag-item > svg *[fill*="|"] {
 		stroke: red;
 	}
 	drag-item > svg {
@@ -268,6 +268,11 @@
 		let c = document.createElement('div')
 		c.append(...gs)
 		l.append(c)
+		let c2 = document.createElement('div')
+		let col = document.createElement('input')
+		c2.append(col)
+		l.append(c2)
+		col.value = elem.firstElementChild.getAttribute('fill')
 		
 		let m = document.createElement('li')
 		dropzone(m)
@@ -296,6 +301,7 @@
 	}
 	
 	function convertToAbsolute(path){
+		return path.getAttribute('d').split(/(?=M)/)
 		let segs = path.pathSegList
 		let outs = [], out = ""
 		let x=0, y=0
@@ -408,8 +414,8 @@
 			while (shape = children.shift()) {
 				if (shape.nodeName == 'path') {
 					let fill = shape.getAttribute('fill')
-					if (fill[0]=='{')
-						shape.setAttribute('fill', fill.match(/{(.*?)[|]/)[1])
+					/*if (fill && fill.includes('|'))
+						shape.setAttribute('fill', fill.match(/(.*?)[|]/)[1])*/
 					let paths = convertToAbsolute(shape)
 					for (let path of paths) {
 						let n = shape.cloneNode(false)
