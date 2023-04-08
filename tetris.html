@@ -84,8 +84,9 @@
 		height: 72px;
 		display: grid;
 		grid-template:
-			"svg row1" 20px
+			"svg row1" 1fr
 		"svg row2" 1fr
+		"svg row3" 1fr
 		/ 72px 1fr;
 		grid-auto-flow: row;
 		place-items: center start;
@@ -139,6 +140,12 @@
 	label > input[type=checkbox]:checked[name=female] + span {
 		background: #C48;
 	}
+	input[name=color] {
+		font-size: 16px;
+		font-family: cursive;
+		text-transform: lowercase;
+		font-variant-numeric: oldstyle-nums tabular-nums;
+	}
 	svg {
 		background: white;
 	}
@@ -182,6 +189,8 @@
 </main>
 
 <script>
+	"use strict"
+	
 	$blend.onchange()
 	/*document.ondragover = ev=>{
 		if (ev.dataTransfer.types.includes("Files")) {
@@ -283,11 +292,16 @@
 		let c = document.createElement('div')
 		c.append(...gs)
 		l.append(c)
-		let c2 = document.createElement('div')
-		let col = document.createElement('input')
-		c2.append(col)
-		l.append(c2)
-		col.value = elem.firstElementChild.getAttribute('fill')
+		for (let x of [1,2]) {
+			let c2 = document.createElement('div')
+			let col = document.createElement('input')
+			c2.append(col)
+			l.append(c2)
+			if (x==1)
+				col.name = 'color', col.value = elem.firstElementChild.getAttribute('fill').replace(/^#/,'')
+			else
+				col.name = 'note'
+		}
 		
 		let m = document.createElement('li')
 		dropzone(m)
@@ -507,13 +521,21 @@
 		$svg = out
 		clean_rows()
 	}
-function EXPORT() {
-layers=document.querySelectorAll('drag-item')
-return '<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">\n\t'+([...layers].map(x=>{
-gender = [...x.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).map(x=>x.name).join(',')
-shape = x.querySelector('svg').firstElementChild.cloneNode(true)
-shape.setAttribute('data-gender', gender)
-return shape}).map(x=>x.outerHTML).join('\n\t')).replaceAll('></path>','/>')+"</svg>"
+	
+	function EXPORT() {
+		let layers = document.querySelectorAll('drag-item')
+		return '<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">'+([...layers].map(x=>{
+			let gender = [...x.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).map(x=>x.name).join(',')
+			let shape = x.querySelector('svg').firstElementChild.cloneNode(true)
+			let note = x.querySelector('input[name=note]').value
+			
+				
+			shape.setAttribute('data-gender', gender)
+			let out = '\n\t'+shape.outerHTML.replace(/><\/\w+>$/g, '/>')
+			if (note)
+				out = "\n\t<!-- "+note+" -->" + out
+			return out
+		}).join(""))+"\n</svg>"
 	}
 	/*
 	[...document.querySelectorAll('[data-gender]')].forEach(x=>x.style.display = x.dataset.gender.split(',').includes('neutral') ? 'unset' : 'none')
