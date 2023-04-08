@@ -14,7 +14,10 @@ class One {
 		this.i = 0
 	}
 	scan() {
-		return this.text.charAt(this.i++)
+		let c = this.text.charAt(this.i++)
+		if (c!="\n")
+			return c
+		return this.scan()
 	}
 	readString() {
 		let start = this.i
@@ -48,7 +51,7 @@ for (let i=0; ; i++) {
 			console.log(out)
 			throw new Error('file contents mismatch: '+files[0].name+' and '+files[j].name)
 			//out += files[0].text.slice(files[0].i)
-			//c = undefined
+			//c = undefined <ellipse fill="#BE1931" cx="22" cy="28.07" rx="9.214" ry="3.439"/>
 		}
 	}
 	if (!c)

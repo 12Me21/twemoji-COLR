@@ -19,7 +19,11 @@
 </div>
 
 <style>
+	ol,li {
+		all: unset;
+	}
 	html, body {
+		background: white;
 		position: fixed;
 		margin: 0;
 		width: 100%;
@@ -59,11 +63,10 @@
 		grid-area: 1/1/1/1;
 	}
 	#\$list {
-		overflow-y: scroll;
+		background: white;
 		display: flex;
 		flex-flow: row wrap;
 		align-content: flex-start;
-		grid-area: layers;
 	}
 	body {
 		display: flex;
@@ -86,9 +89,9 @@
 		/ 72px 1fr;
 		grid-auto-flow: row;
 		place-items: center start;
-		/*background-image: var(--bitmap);
-			background-size: auto 100%;*/
 		background: white;
+		/*background-image: var(--bitmap);
+		background-size: auto 100%;*/
 	}
 	drag-item > div{
 		display: flex;
@@ -170,13 +173,12 @@
 		outline: 2px dotted yellow;
 		outline-offset: -2px;
 	}
-	
 </style>
 
 <div style=display:flex;><input id=$blend type=checkbox onchange="document.documentElement.style.setProperty('--blend',$blend.checked ? 'difference' : 'unset')"><input id=$load><button onclick='go($load.value)'>Load</button></div>
 <main>
-	<div id=$pics></div>
-	<ol id=$list></ol>
+	<div id=$pics style='contain:strict'></div>
+	<div style='contain:strict;overflow-y: scroll;grid-area: layers;'><ol id=$list></ol></div>
 </main>
 
 <script>
@@ -314,8 +316,34 @@
 	}
 	
 	function convertToAbsolute(path){
-		return path.getAttribute('d').split(/(?=M)/)
-		let segs = path.pathSegList
+		let d = path.getAttribute('d')
+		// idea to write svg paths: 
+		// use +/- for all relative coords, and no sign for absolute (this is assuming the svg has origin at 0,0)
+		let x=0, y=0
+		d = d.replace(/(?:[zZ]|^)\s*([mM])([^a-df-zA-DF-Z]*)/g,(m,cmd,args)=>{
+			console.log(args)
+			let [mx,my,...rest] = args.match(/[-+]?[0-9]*[.]?[0-9]+(?:[eE][-+]?[0-9]+)?/g)
+			mx=+mx
+			my=+my
+			if (cmd=="M") {
+				x = mx
+				y = my
+				return m
+			} else if (cmd=="m") {
+				x += mx
+				y += my
+				let out = "z M"+x.toFixed(8)+","+y.toFixed(8)+" "
+				if (rest.length) {
+					out += "l "
+					console.warn('extra m args', m)
+				}
+				return out
+			}
+		})
+		//path.setAttribute('d', d)
+		return d.split(/(?=M)/)
+		//return path.getAttribute('d').split(/(?=[Mm])/)
+		/*let segs = path.pathSegList
 		let outs = [], out = ""
 		let x=0, y=0
 		let x0=0, y0=0
@@ -363,7 +391,7 @@
 			outs.push(out)
 			out = ""
 		}
-		return outs
+		return outs*/
 	}
 	
 	let c2d = $canvas.getContext('2d')
@@ -380,6 +408,23 @@
 			c2d.beginPath()
 			c2d.arc(shape.getAttribute('cx')||0, shape.getAttribute('cy')||0, shape.getAttribute('r')||0, 0, Math.PI*2)
 			c2d.fill()
+		}
+		else if (shape.nodeName=='ellipse') {
+			c2d.beginPath()
+			let tf = shape.getAttribute('transform')
+			let angle
+			if (tf) {
+				angle = tf.match(/rotate\(([-+eE0-9.]+)/)
+				if (angle)
+					angle = +(angle[1])
+			}
+			console.log('ellipse', shape,shape.getAttribute('cx')||0, shape.getAttribute('cy')||0, angle || 0, shape.getAttribute('rx')||0, shape.getAttribute('ry')||0, 0, Math.PI*2)
+			c2d.ellipse(shape.getAttribute('cx')||0, shape.getAttribute('cy')||0, shape.getAttribute('rx')||0, shape.getAttribute('ry')||0, angle || 0, 0, Math.PI*2)
+			c2d.fill()
+		}
+		else {
+			console.warn('unhandled shape', shape)
+			return shape.outerHTML
 		}
 		let url = c2d.canvas.toDataURL('image/png', 0.8)
 		//console.log(url)
@@ -419,7 +464,7 @@
 				svg2.append(c)
 				let g = dlayer(svg2, gender)
 				g._order = j+i/8
-				//g.style.setProperty('--bitmap', 'url("'+key+'")')
+				g.style.setProperty('--bitmap', 'url("'+key+'")')
 				lists.push(g)
 				//$list.prepend()
 				
@@ -431,7 +476,6 @@
 			while (shape = children.shift()) {
 				if (shape.nodeName == 'path') {
 					let fill = shape.getAttribute('fill')
-					console.log(fill)
 					/*if (fill && fill.includes('|'))
 						shape.setAttribute('fill', fill.match(/(.*?)[|]/)[1])*/
 					let paths = convertToAbsolute(shape)
