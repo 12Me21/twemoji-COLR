@@ -34,17 +34,20 @@
 	#\$pics {
 		display: grid;
 	}
-	#\$pics > *:nth-child(3n+1) {
+	#\$pics > *:nth-child(1) {
 		grid-area: 1/1/1/1;
 	}
-	#\$pics > *:nth-child(3n+2) {
+	#\$pics > *:nth-child(2) {
 		grid-area: 2/1/2/1;
 	}
-	#\$pics > *:nth-child(3n+3) {
+	#\$pics > *:nth-child(3) {
 		grid-area: 3/1/3/1;
 	}
-	#\$pics > *:nth-child(n+4) {
-		mix-blend-mode: difference;
+	#\$pics > *:nth-child(4) {
+		grid-area: 4/1/4/1;
+	}
+	#\$pics > .svg-out {
+		mix-blend-mode: var(--blend);
 	}
 	#\$orig {
 		display: grid;
@@ -83,8 +86,9 @@
 		/ 72px 1fr;
 		grid-auto-flow: row;
 		place-items: center start;
-		background-image: var(--bitmap);
-		background-size: auto 100%;
+		/*background-image: var(--bitmap);
+			background-size: auto 100%;*/
+		background: white;
 	}
 	drag-item > div{
 		display: flex;
@@ -103,7 +107,10 @@
 		width: 100%;
 		height: 100%;
 	}
-	input[type=checkbox] {
+	input:not([type]) {
+		width: 100%;
+	}
+	label > input[type=checkbox] {
 		appearance: none;
 		opacity: 0;
 		cursor: pointer;
@@ -122,6 +129,9 @@
 	}
 	label > input[type=checkbox]:checked[name=male] + span {
 		background: #44B;
+	}
+	label > input[type=checkbox]:checked[name=mixed] + span {
+		background: #BB4;
 	}
 	label > input[type=checkbox]:checked[name=female] + span {
 		background: #C48;
@@ -146,6 +156,7 @@
 		display: block;
 		margin: 0;
 		padding: 0;
+		background: white;
 	}
 	li.drop {
 		background: #FF02;
@@ -162,13 +173,14 @@
 	
 </style>
 
-<div><input id=$load><button onclick='go($load.value)'>Load</button></div>
+<div style=display:flex;><input id=$blend type=checkbox onchange="document.documentElement.style.setProperty('--blend',$blend.checked ? 'difference' : 'unset')"><input id=$load><button onclick='go($load.value)'>Load</button></div>
 <main>
 	<div id=$pics></div>
 	<ol id=$list></ol>
 </main>
 
 <script>
+	$blend.onchange()
 	/*document.ondragover = ev=>{
 		if (ev.dataTransfer.types.includes("Files")) {
 			ev.preventDefault()
@@ -183,18 +195,19 @@
 	}*/
 	
 	function clean_rows() {
-		let layers = {neutral:[],male:[],female:[]}
+		let layers = {neutral:[],male:[],female:[],mixed:[]}
 		for (let x of $list.children) {
 			let q = x.firstElementChild
 			let path = q.firstElementChild.firstElementChild
 			for (let g of q.querySelectorAll('input[type=checkbox]')) {
 				if (g.checked)
-					layers[g.name].unshift(path.cloneNode(true))
+					layers[g.name].push(path.cloneNode(true))
 			}
 		}
-		$svg[0].replaceChildren(...layers.neutral)
-		$svg[1].replaceChildren(...layers.male)
-		$svg[2].replaceChildren(...layers.female)
+		$svg[0]?.replaceChildren(...layers.neutral)
+		$svg[1]?.replaceChildren(...layers.male)
+		$svg[2]?.replaceChildren(...layers.female)
+		$svg[3]?.replaceChildren(...layers.mixed)
 	}
 	
 	let dragging
@@ -254,14 +267,14 @@
 		let l = document.createElement('drag-item')
 		l.setAttribute('draggable', true)
 		l.append(elem)
-		let gs = ['neutral','male','female'].map(x=>{
+		let gs = ['neutral','male','female','mixed'].map(x=>{
 			let i = document.createElement('input')
 			i.type = 'checkbox'
 			i.name = x
 			i.checked = x==which
 			let l = document.createElement('label')
 			let v = document.createElement('span')
-			v.textContent = {neutral:'X',male:'M',female:'F'}[x]
+			v.textContent = {neutral:'X',male:'M',female:'F',mixed:'2'}[x]
 			l.prepend(i,v)
 			return l
 		})
@@ -378,10 +391,14 @@
 		let n = load('original/'+name+'/neutral.svg')
 		let m = load('original/'+name+'/male.svg')
 		let f = load('original/'+name+'/female.svg')
+		let b = undefined//load('original/'+name+'/mixed.svg')
 		let lists = []
 		let layermap = new Map()
-		let vars = [n,m,f].map((x,i)=>{
-			let gender = ['neutral','male','female'][i]
+		let vars = [n,m,f]//,b]
+		vars = vars.map((x,i)=>{
+			if (!x)
+				return
+			let gender = ['neutral','male','female','mixed'][i]
 			x = x.documentElement
 			let svg = x
 			let j=0
@@ -400,9 +417,9 @@
 				c._sister = shape.cloneNode(true)
 				let svg2 = svg.cloneNode(false)
 				svg2.append(c)
-				let g = dlayer(svg2,gender)
+				let g = dlayer(svg2, gender)
 				g._order = j+i/8
-				g.style.setProperty('--bitmap', 'url("'+key+'")')
+				//g.style.setProperty('--bitmap', 'url("'+key+'")')
 				lists.push(g)
 				//$list.prepend()
 				
@@ -414,23 +431,30 @@
 			while (shape = children.shift()) {
 				if (shape.nodeName == 'path') {
 					let fill = shape.getAttribute('fill')
+					console.log(fill)
 					/*if (fill && fill.includes('|'))
 						shape.setAttribute('fill', fill.match(/(.*?)[|]/)[1])*/
 					let paths = convertToAbsolute(shape)
 					for (let path of paths) {
-						let n = shape.cloneNode(false)
+						let n = shape.cloneNode(true)
 						n.setAttribute('d', path)
-						addshape(n, children)
+						//n.setAttribute('fill', fill)
+						addshape(n)
 					}
 					continue
 				}
-				addshape(shape, children)
+				addshape(shape)
 			}
 			return x
 		})
-		let out = vars.map(x=>x.cloneNode(false))
+		let out = vars.map((x,i)=>{
+			x=x.cloneNode(false)
+			x.classList.add('svg-out')
+			x.style.setProperty('grid-area', `${i+1}/1/${i+1}/1`)
+			return x
+		})
 		lists.sort((a,b)=>{
-			return b._order - a._order
+			return - (b._order - a._order)
 		})
 		$list.append(...lists)
 		
@@ -439,6 +463,17 @@
 		$svg = out
 		clean_rows()
 	}
+function EXPORT() {
+layers=document.querySelectorAll('drag-item')
+return '<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">\n\t'+([...layers].map(x=>{
+gender = [...x.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).map(x=>x.name).join(',')
+shape = x.querySelector('svg').firstElementChild.cloneNode(true)
+shape.setAttribute('data-gender', gender)
+return shape}).map(x=>x.outerHTML).join('\n\t')).replaceAll('></path>','/>')+"</svg>"
+	}
+	/*
+	[...document.querySelectorAll('[data-gender]')].forEach(x=>x.style.display = x.dataset.gender.split(',').includes('neutral') ? 'unset' : 'none')
+	*/
 </script>
 todo:
 - diff between orig/edited
