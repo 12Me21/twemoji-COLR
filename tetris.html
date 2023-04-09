@@ -1,21 +1,7 @@
 <!doctype html><meta charset=utf-8>
 
 <div style=display:none;>
-	<canvas width=32 height=32 id=$canvas></canvas>
-	<svg id=$svg fill="inherit" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
-		<marker
-			id="dot"
-			orient="auto"
-			viewBox="-8 -8 16 16"
-			markerWidth="2"
-			markerHeight="2"
-			refX="0"
-			refY="0"
-		>
-			<line x1="0" y1="0" x2="0" y2="8" stroke="red" />
-			<circle r="2" stroke="blue" />
-		</marker>
-	</svg>
+	<canvas width=64 height=64 id=$canvas></canvas>
 </div>
 
 <style>
@@ -142,9 +128,10 @@
 	}
 	input[name=color] {
 		font-size: 16px;
-		font-family: cursive;
 		text-transform: lowercase;
 		font-variant-numeric: oldstyle-nums tabular-nums;
+		font-family: sarasa fixed j;
+		font-variant-ligatures: none;
 	}
 	svg {
 		background: white;
@@ -191,34 +178,25 @@
 <script>
 	"use strict"
 	
+	let $svg
+	
 	$blend.onchange()
-	/*document.ondragover = ev=>{
-		if (ev.dataTransfer.types.includes("Files")) {
-			ev.preventDefault()
-			ev.dataTransfer.dropEffect = 'copy'
-		}
-	}
-	document.ondrop = ev=>{
-		if (ev.dataTransfer.files.length) {
-			ev.preventDefault()
-			upload(ev.dataTransfer.files)
-		}
-	}*/
 	
 	function clean_rows() {
-		let layers = {neutral:[],male:[],female:[],mixed:[]}
+		let shapes = {neutral:[],male:[],female:[],mixed:[]}
 		for (let x of $list.children) {
 			let q = x.firstElementChild
-			let path = q.firstElementChild.firstElementChild
+			if (!q) continue
+			let layer = q._layer
 			for (let g of q.querySelectorAll('input[type=checkbox]')) {
 				if (g.checked)
-					layers[g.name].push(path.cloneNode(true))
+					shapes[g.name].push(layer.cloneShape())
 			}
 		}
-		$svg[0]?.replaceChildren(...layers.neutral)
-		$svg[1]?.replaceChildren(...layers.male)
-		$svg[2]?.replaceChildren(...layers.female)
-		$svg[3]?.replaceChildren(...layers.mixed)
+		$svg[0]?.replaceChildren(...shapes.neutral)
+		$svg[1]?.replaceChildren(...shapes.male)
+		$svg[2]?.replaceChildren(...shapes.female)
+		$svg[3]?.replaceChildren(...shapes.mixed)
 	}
 	
 	let dragging
@@ -231,16 +209,16 @@
 		cell.ondrop = ev=>{
 			if (dragging && ev.dataTransfer.getData('text/x-drag')) {
 				cell.classList.remove('drop')
-				dragging.classList.remove('dragging')
 				let d = dragging
 				dragging = null
+				d.classList.remove('dragging')
 				let p = d.parentNode
 				if (cell.firstChild) {
 					if (!p) return
 					p.append(cell.firstChild)
 				}
 				cell.append(d)
-				window.setTimeout(x=>clean_rows($list), 0)
+				clean_rows()
 			} else {
 				console.log('idk?', ev, dragging)
 			}
@@ -266,48 +244,70 @@
 		}
 	}
 	$list.ondragstart = ev=>{
-		if (ev.target.tagName=='DRAG-ITEM') {
-			dragging = ev.target
-			ev.target.classList.add('dragging')
+		let p = ev.target.closest('drag-item')
+		//console.log('drag?', ev.target)
+		if (p) {
+			dragging = p
+			p.classList.add('dragging')
 			ev.dataTransfer.setData('text/x-drag', 1)
 			ev.dataTransfer.effectAllowed = 'move'
 		}
 	}
 	
-	function dlayer(elem, which) {
-		let l = document.createElement('drag-item')
-		l.setAttribute('draggable', true)
-		l.append(elem)
-		let gs = ['neutral','male','female','mixed'].map(x=>{
-			let i = document.createElement('input')
-			i.type = 'checkbox'
-			i.name = x
-			i.checked = x==which
-			let l = document.createElement('label')
-			let v = document.createElement('span')
-			v.textContent = {neutral:'X',male:'M',female:'F',mixed:'2'}[x]
-			l.prepend(i,v)
-			return l
-		})
-		let c = document.createElement('div')
-		c.append(...gs)
-		l.append(c)
-		for (let x of [1,2]) {
-			let c2 = document.createElement('div')
-			let col = document.createElement('input')
-			c2.append(col)
-			l.append(c2)
-			if (x==1)
-				col.name = 'color', col.value = elem.firstElementChild.getAttribute('fill').replace(/^#/,'')
-			else
-				col.name = 'note'
+	class Layer {
+		constructor(shape, svg, gender) {
+			shape = shape.cloneNode(true)
+			let svg2 = svg.cloneNode(false)
+			svg2.append(shape)
+			
+			this.$shape = shape
+			
+			let l = document.createElement('drag-item')
+			l.setAttribute('draggable', true)
+			l.append(svg2)
+			let gs = ['neutral','male','female','mixed'].map(x=>{
+				let i = document.createElement('input')
+				i.type = 'checkbox'
+				i.name = x
+				i.checked = x==gender
+				let l = document.createElement('label')
+				let v = document.createElement('span')
+				v.textContent = {neutral:'X',male:'M',female:'F',mixed:'2'}[x]
+				l.prepend(i,v)
+				return l
+			})
+			let c = document.createElement('div')
+			c.append(...gs)
+			l.append(c)
+			for (let x of [1,2]) {
+				let c2 = document.createElement('div')
+				let col = document.createElement('input')
+				c2.append(col)
+				l.append(c2)
+				if (x==1)
+					col.name = 'color', col.value = this.$shape.getAttribute('fill')//.replace(/^#/,'')
+				else
+					col.name = 'note'
+			}
+			
+			l._layer = this
+			
+			this.elem = l
+			
+			this.genders = {}
+			
+			this.add_gender(gender, this.$shape.getAttribute('fill'))
 		}
-		
-		let m = document.createElement('li')
-		dropzone(m)
-		m.append(l)
-		
-		return m
+		cloneShape() {
+			return this.$shape.cloneNode(true)
+		}
+		get_genders() {
+		}
+		add_gender(gender, color) {
+			this.genders[gender] = color
+			let c = this.elem.querySelector('input[name='+gender+']')
+			c.checked = true
+		}
 	}
 	
 	function load(file) {
@@ -315,11 +315,6 @@
 		x.open('GET', file, false)
 		x.send()
 		return x.responseXML
-	}
-	
-	function set_gender(layer, gender) {
-		let c = layer.querySelector('input[name='+gender+']')
-		c.checked = true
 	}
 	
 	function fmt(w) {
@@ -333,6 +328,8 @@
 		let d = path.getAttribute('d')
 		// idea to write svg paths: 
 		// use +/- for all relative coords, and no sign for absolute (this is assuming the svg has origin at 0,0)
+		if (d.includes('|'))
+			throw new Error('differing paths')
 		let x=0, y=0
 		d = d.replace(/(?:[zZ]|^)\s*([mM])([^a-df-zA-DF-Z]*)/g,(m,cmd,args)=>{
 			console.log(args)
@@ -462,28 +459,23 @@
 			let svg = x
 			let j=0
 			
-			let addshape = (shape,above)=>{
-				let key = make_bitmap(shape,above)//shape.outerHTML
+			let addshape = (shape)=>{
+				let fill = shape.getAttribute('fill')
+				let key = make_bitmap(shape)//shape.outerHTML
 				let existing = layermap.get(key)
-				j++;
 				if (existing) {
-					existing._order = j+i/8
-					set_gender(existing, gender)
+					existing.add_gender(gender, fill)
 					return
 				}
+				j++;
 				
-				let c = shape.cloneNode(true)
-				c._sister = shape.cloneNode(true)
-				let svg2 = svg.cloneNode(false)
-				svg2.append(c)
-				let g = dlayer(svg2, gender)
-				g._order = j+i/8
-				g.style.setProperty('--bitmap', 'url("'+key+'")')
+				let g = new Layer(shape, svg, gender)
+				g.order = j+i/8
+				//g.elem.style.setProperty('--bitmap', 'url("'+key+'")')
 				lists.push(g)
 				//$list.prepend()
 				
 				layermap.set(key, g)
-				
 			}
 			let children = [...x.children]
 			let shape
@@ -512,9 +504,14 @@
 			return x
 		})
 		lists.sort((a,b)=>{
-			return - (b._order - a._order)
+			return - (b.order - a.order)
 		})
-		$list.append(...lists)
+		$list.append(...lists.map(l=>{
+			let m = document.createElement('li')
+			dropzone(m)
+			m.append(l.elem)
+			return m
+		}))
 		
 		$pics.append(...vars)
 		$pics.append(...out)
@@ -525,12 +522,34 @@
 	function EXPORT() {
 		let layers = document.querySelectorAll('drag-item')
 		return '<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">'+([...layers].map(x=>{
+			let layer = x._layer
+			
 			let gender = [...x.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).map(x=>x.name).join(',')
-			let shape = x.querySelector('svg').firstElementChild.cloneNode(true)
+			let shape = layer.cloneShape()
 			let note = x.querySelector('input[name=note]').value
 			
-				
 			shape.setAttribute('data-gender', gender)
+			
+			let color = layer.genders.neutral || layer.genders.male || layer.genders.female || layer.genders.mixed
+			let extracolors = [undefined,undefined]
+			let gender_color = false
+			if (layer.genders.male && layer.genders.male != color) {
+				extracolors[0] = layer.genders.male
+				gender_color = true
+			}
+			if (layer.genders.female && layer.genders.female != color) {
+				extracolors[1] = layer.genders.female
+				gender_color = true
+			}
+			if (layer.genders.mixed && layer.genders.mixed != color) {
+				extracolors[2] = layer.genders.mixed
+				gender_color = true
+			}
+			
+			if (gender_color) {
+				shape.setAttribute('data-gender-color', extracolors.join("|"))
+			}
+			
 			let out = '\n\t'+shape.outerHTML.replace(/><\/\w+>$/g, '/>')
 			if (note)
 				out = "\n\t<!-- "+note+" -->" + out
