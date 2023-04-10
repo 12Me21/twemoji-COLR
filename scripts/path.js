@@ -31,6 +31,13 @@ function parse(str) {
 		}
 	}
 	
+	function autoclose() {
+		if (contour) {
+			contour.push(['M']) // gap (unclosed contour)
+			contours.push(contour)
+		}
+	}
+	
 	let contours = [], contour = null
 	
 	let px=0, py=0 // current pen pos
@@ -49,7 +56,7 @@ function parse(str) {
 		}
 		if (cmd=='Z') {
 			if (contour) {
-				contour.push(['L',sx,sy])
+				contour.push(['L'])
 				contours.push(contour)
 				contour = null
 				px = sx
@@ -75,42 +82,42 @@ function parse(str) {
 			let ny = px + +(args[args.length-1]??'0')
 			
 			if (cmd=='M') {
-				if (contour)
-					contours.push(contour)
-				contour = [['M',nx,ny]]
+				autoclose()
+				contour = []
 				sx=nx
 				sy=ny
 				cmd = 'L'
 			} else if (cmd=='H'||cmd=='V'||cmd=='L') {
-				contour.push(['L',nx,ny])
+				contour.push(['L'])
 			} else if (cmd=='A') {
-				contour.push(['A',nx,ny,args[1],args[2],args[3],args[4],args[5]])
+				contour.push(['A',args[1],args[2],args[3],args[4],args[5]])
 			} else if (cmd=='C') {
-				contour.push(['C',nx,ny,px+args[1],px+args[2],px+args[3],px+args[4]])
+				contour.push(['C',px+args[1],px+args[2],px+args[3],px+args[4]])
 			} else if (cmd=='Q') {
-				contour.push(['Q',nx,ny,px+args[1],px+args[2]])
+				contour.push(['Q',px+args[1],px+args[2]])
 			} else if (cmd=='S') {
-				let last = contour[contour.length-1]
 				let x=nx,y=ny
-				if (last?.[0]=='C') {
-					x += nx-last[5]
-					y += ny-last[6]
+				if (contour[contour.length-2][0]=='C') {
+					let last = contour[contour.length-1]
+					x += nx-last[0]
+					y += ny-last[1]
 				}
-				contour.push(['C',nx,ny,x,y,px+args[1],px+args[2]])
+				contour.push(['C',x,y,px+args[1],px+args[2]])
 			} else if (cmd=='T') {
 				let last = contour[contour.length-1]
 				let x=nx,y=ny
-				if (last?.[0]=='Q') {
-					x += nx-last[3]
-					y += ny-last[4]
+				if (contour[contour.length-2][0]=='Q') {
+					let last = contour[contour.length-1]
+					x += nx-last[0]
+					y += ny-last[1]
 				}
-				contour.push(['Q',nx,ny,x,y,px+args[1],px+args[2]])
+				contour.push(['Q',x,y])
 			}
+			contour.push([nx,ny])
 		} while (args = eat(rx_arg))
 	}
-	if (contour)
-		contours.push(contour)
+	autoclose()
 	return contours
 }
 
-console.log(parse('M0,0,10,10z'))
+console.log(parse(process.argv[2]))
