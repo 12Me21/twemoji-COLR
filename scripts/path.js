@@ -1,4 +1,4 @@
-let rx_num = /[\s,]*([-+]?\d*[.]?\d+(?:[Ee][-+]?\d+))/
+let rx_num = /[\s,]*([-+]?\d*[.]?\d+(?:[Ee][-+]?\d+)?)/
 
 let rx_x = new RegExp(rx_num.source+"(){0}", 'y')
 let rx_y = new RegExp("(){0}"+rx_num.source, 'y')
@@ -6,7 +6,7 @@ let rx_num2 = new RegExp(rx_num.source.repeat(2), 'y')
 let rx_num4 = new RegExp(rx_num.source.repeat(4), 'y')
 let rx_num6 = new RegExp(rx_num.source.repeat(4), 'y')
 let rx_arc = new RegExp(rx_num.source.repeat(3)+/[\s,]*([01])[\s,]*([01])/.source+rx_num.source.repeat(2), 'y')
-let rx_cmd = new RegExp(/\s*[MmLlHhVvCcSsQqTtAaZz]/)
+let rx_cmd = new RegExp(/\s*[MmLlHhVvCcSsQqTtAaZz]/,'y')
 
 let argtypes = {
 	M: rx_num2,
@@ -63,7 +63,7 @@ function parse(str) {
 		let cx=0,cy=0
 		let qx=0,qy=0
 		
-		args = eat(rx_arg)
+		let args = eat(rx_arg)
 		if (!args)
 			throw new Error('not enough args'+str.slice(i-1, i+20))
 		do {
@@ -71,8 +71,8 @@ function parse(str) {
 				px = 0
 				py = 0
 			}
-			let nx = px+(args[args.length-2]??'0')
-			let ny = py+(args[args.length-1]??'0')
+			let nx = px + +(args[args.length-2]??'0')
+			let ny = px + +(args[args.length-1]??'0')
 			
 			if (cmd=='M') {
 				if (contour)
@@ -108,5 +108,9 @@ function parse(str) {
 			}
 		} while (args = eat(rx_arg))
 	}
+	if (contour)
+		contours.push(contour)
 	return contours
 }
+
+console.log(parse('M0,0,10,10z'))

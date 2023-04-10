@@ -1,7 +1,7 @@
 <!doctype html><meta charset=utf-8>
 
 <div style=display:none;>
-	<canvas width=128 height=128 id=$canvas></canvas>
+	<canvas width=64 height=64 id=$canvas></canvas>
 </div>
 
 <style>
@@ -331,27 +331,28 @@
 		if (d.includes('|'))
 			throw new Error('differing paths')
 		let x=0, y=0
-		d = d.replace(/(?:[zZ]|^)\s*([mM])([^a-df-zA-DF-Z]*)/g,(m,cmd,args)=>{
-			console.log(args)
+		d = d.replace(/([zZ]|^)\s*([mM])([^a-df-zA-DF-Z]*)/g,(m,z,cmd,args)=>{
+			//console.log(args)
 			let [mx,my,...rest] = args.match(/[-+]?[0-9]*[.]?[0-9]+(?:[eE][-+]?[0-9]+)?/g)
 			mx=+mx
 			my=+my
 			if (cmd=="M") {
 				x = mx
 				y = my
-				return m
+				return z+""+m
 			} else if (cmd=="m") {
 				x += mx
 				y += my
-				let out = "z M"+x.toFixed(8)+","+y.toFixed(8)+" "
+				let out = z+"M"+x.toFixed(8)+","+y.toFixed(8)+" "
 				if (rest.length) {
-					out += "l "
-					console.warn('extra m args', m)
+					out += "l "+rest.join(" ")
+					console.warn('extra m args', m, out)
 				}
 				return out
 			}
 		})
 		//path.setAttribute('d', d)
+		//console.log(d.split(/(?=M)/))
 		return d.split(/(?=M)/)
 		//return path.getAttribute('d').split(/(?=[Mm])/)
 		/*let segs = path.pathSegList
@@ -566,3 +567,4 @@ todo:
 - show all gender variants etc.
 - color selector, skin colors, predefined palettes
 
+<!--maybe we should use like, one <path with multiple `d` attribs, one per gender?-->
