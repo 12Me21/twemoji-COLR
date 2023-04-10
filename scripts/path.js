@@ -133,11 +133,42 @@ function rev1(c) {
 	return rev1
 }
 
+function unparse_rel(contours) {
+	let out = ""
+	for (let c of contours) {
+		out += "\nM "+c[0]+" "
+		let [sx,sy] = c[0]
+		for (let i=1; i<c.length; i+=2) {
+			let [cmd, ...args] = c[i]
+			if (cmd=='L' && i==c.length-1) {
+				out += "Z"
+				break
+			}
+			let pos = c[(i+1) % c.length]
+			let [nx,ny] = pos
+			pos[0] -= sx
+			pos[1] -= sy
+			out += cmd.toLowerCase() + " "
+			if (cmd=='A') {
+				out += args + " " // todo: custom formatting for A
+			} else {
+				for (let j=0;j<args.length;j+=2) {
+					args[j+0] -= sx
+					args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
+				}
+				out += args + " "
+			}
+			out += pos + " "
+			0,[sx,sy] = [nx,ny]
+		}
+	}
+	return out
+}
+
 function unparse(contours) {
 	let out = ""
 	for (let c of contours) {
 		out += "\nM "+c[0]+" "
-		//let [sx,sy] = c[0]
 		for (let i=1; i<c.length; i+=2) {
 			let [cmd, ...args] = c[i]
 			if (cmd=='L' && i==c.length-1) {
@@ -156,6 +187,6 @@ function unparse(contours) {
 let cc = parse(process.argv[2])
 let s = unparse(cc)
 console.log(cc,s)
-rev1(cc[0])
-s = unparse(cc)
-console.log(cc,s)
+//rev1(cc[0])
+s = unparse_rel(cc)
+console.log(s)
