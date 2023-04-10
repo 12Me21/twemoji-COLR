@@ -1,7 +1,7 @@
 <!doctype html><meta charset=utf-8>
 
 <div style=display:none;>
-	<canvas width=64 height=64 id=$canvas></canvas>
+	<canvas width=128 height=128 id=$canvas></canvas>
 </div>
 
 <style>
@@ -463,11 +463,12 @@
 				let fill = shape.getAttribute('fill')
 				let key = make_bitmap(shape)//shape.outerHTML
 				let existing = layermap.get(key)
+				j++;
 				if (existing) {
 					existing.add_gender(gender, fill)
 					return
 				}
-				j++;
+				
 				
 				let g = new Layer(shape, svg, gender)
 				g.order = j+i/8
