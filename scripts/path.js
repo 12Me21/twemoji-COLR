@@ -78,8 +78,8 @@ function parse(str) {
 				px = 0
 				py = 0
 			}
-			let nx = px + +(args[args.length-2]??'0')
-			let ny = px + +(args[args.length-1]??'0')
+			let nx = px + +((args[args.length-2]??'0')+'e5')
+			let ny = px + +((args[args.length-1]??'0')+'e5')
 			
 			if (cmd=='M') {
 				autoclose()
@@ -120,4 +120,42 @@ function parse(str) {
 	return contours
 }
 
-console.log(parse(process.argv[2]))
+function rev1(c) {
+	c.reverse()
+	c.unshift(c.pop())
+	for (let i=1; i<c.length; i+=2) {
+		let seg = c[i]
+		if (seg[0]=='C')
+			c[i] = ['C',seg[3],seg[4],seg[1],seg[2]]
+		if (seg[0]=='A')
+			seg[0][5] = +!seg[0][5]
+	}
+	return rev1
+}
+
+function unparse(contours) {
+	let out = ""
+	for (let c of contours) {
+		out += "\nM "+c[0]+" "
+		//let [sx,sy] = c[0]
+		for (let i=1; i<c.length; i+=2) {
+			let [cmd, ...args] = c[i]
+			if (cmd=='L' && i==c.length-1) {
+				out += "Z"
+				break
+			}
+			let pos = c[(i+1) % c.length]
+			out += cmd + " "
+			out += args + " "
+			out += pos + " "
+		}
+	}
+	return out
+}
+
+let cc = parse(process.argv[2])
+let s = unparse(cc)
+console.log(cc,s)
+rev1(cc[0])
+s = unparse(cc)
+console.log(cc,s)
