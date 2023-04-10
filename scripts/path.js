@@ -67,9 +67,6 @@ function parse(str) {
 		}
 		let rx_arg = argtypes[cmd]
 		
-		let cx=0,cy=0
-		let qx=0,qy=0
-		
 		let args = eat(rx_arg)
 		if (!args)
 			throw new Error('not enough args'+str.slice(i-1, i+20))
@@ -79,7 +76,7 @@ function parse(str) {
 				py = 0
 			}
 			let nx = px + +((args[args.length-2]??'0')+'e5')
-			let ny = px + +((args[args.length-1]??'0')+'e5')
+			let ny = py + +((args[args.length-1]??'0')+'e5')
 			
 			if (cmd=='M') {
 				autoclose()
@@ -113,6 +110,8 @@ function parse(str) {
 				}
 				contour.push(['Q',x,y])
 			}
+			px = nx
+			py = ny
 			contour.push([nx,ny])
 		} while (args = eat(rx_arg))
 	}
@@ -133,10 +132,14 @@ function rev1(c) {
 	return rev1
 }
 
+function fmt(list) {
+	return list.map(x=>x/1e5)
+}
+
 function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
-		out += "\nM "+c[0]+" "
+		out += "\nM "+fmt(c[0])+" "
 		let [sx,sy] = c[0]
 		for (let i=1; i<c.length; i+=2) {
 			let [cmd, ...args] = c[i]
@@ -150,15 +153,15 @@ function unparse_rel(contours) {
 			pos[1] -= sy
 			out += cmd.toLowerCase() + " "
 			if (cmd=='A') {
-				out += args + " " // todo: custom formatting for A
+				out += fmt(args) + " " // todo: custom formatting for A
 			} else {
 				for (let j=0;j<args.length;j+=2) {
 					args[j+0] -= sx
 					args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
 				}
-				out += args + " "
+				out += fmt(args) + " "
 			}
-			out += pos + " "
+			out += fmt(pos) + " "
 			0,[sx,sy] = [nx,ny]
 		}
 	}
@@ -187,6 +190,6 @@ function unparse(contours) {
 let cc = parse(process.argv[2])
 let s = unparse(cc)
 console.log(cc,s)
-//rev1(cc[0])
+rev1(cc[0])
 s = unparse_rel(cc)
 console.log(s)
