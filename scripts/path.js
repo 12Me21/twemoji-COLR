@@ -4,7 +4,7 @@ let rx_x = new RegExp(rx_num.source+"(){0}", 'y')
 let rx_y = new RegExp("(){0}"+rx_num.source, 'y')
 let rx_num2 = new RegExp(rx_num.source.repeat(2), 'y')
 let rx_num4 = new RegExp(rx_num.source.repeat(4), 'y')
-let rx_num6 = new RegExp(rx_num.source.repeat(4), 'y')
+let rx_num6 = new RegExp(rx_num.source.repeat(6), 'y')
 let rx_arc = new RegExp(rx_num.source.repeat(3)+/[\s,]*([01])[\s,]*([01])/.source+rx_num.source.repeat(2), 'y')
 let rx_cmd = new RegExp(/\s*[MmLlHhVvCcSsQqTtAaZz]/,'y')
 
@@ -19,6 +19,11 @@ let argtypes = {
 	T: rx_num4,
 	A: rx_arc,
 }
+
+function pnum(ns) {
+	return Number(ns+"e+5")
+}
+
 function parse(str) {
 	let m
 	let i = 0
@@ -75,8 +80,8 @@ function parse(str) {
 				px = 0
 				py = 0
 			}
-			let nx = px + +((args[args.length-2]??'0')+'e5')
-			let ny = py + +((args[args.length-1]??'0')+'e5')
+			let nx = px + pnum(args[args.length-2]??'0')
+			let ny = py + pnum(args[args.length-1]??'0')
 			
 			if (cmd=='M') {
 				autoclose()
@@ -89,17 +94,18 @@ function parse(str) {
 			} else if (cmd=='A') {
 				contour.push(['A',args[1],args[2],args[3],args[4],args[5]])
 			} else if (cmd=='C') {
-				contour.push(['C',px+args[1],px+args[2],px+args[3],px+args[4]])
+				contour.push(['C',px+pnum(args[1]),py+pnum(args[2]),px+pnum(args[3]),py+pnum(args[4])])
 			} else if (cmd=='Q') {
-				contour.push(['Q',px+args[1],px+args[2]])
+				contour.push(['Q',px+pnum(args[1]),py+pnum(args[2])])
 			} else if (cmd=='S') {
-				let x=nx,y=ny
-				if (contour[contour.length-2][0]=='C') {
-					let last = contour[contour.length-1]
-					x += nx-last[0]
-					y += ny-last[1]
+				let last = contour[contour.length-1]
+				let lastc = contour[contour.length-2]
+				let [x,y] = last
+				if (lastc[0]=="C") {
+					x += x-lastc[3]
+					y += y-lastc[4]
 				}
-				contour.push(['C',x,y,px+args[1],px+args[2]])
+				contour.push(['C',x,y,px+pnum(args[1]),py+pnum(args[2])])
 			} else if (cmd=='T') {
 				let last = contour[contour.length-1]
 				let x=nx,y=ny
@@ -133,13 +139,13 @@ function rev1(c) {
 }
 
 function fmt(list) {
-	return list.map(x=>x/1e5)
+	return list.map(x=>String(x/1e5)).join(",")//.replace(/^[^-]/,'+$&')).join("")
 }
 
 function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
-		out += "\nM "+fmt(c[0])+" "
+		out += "\nM"+fmt(c[0])+" "
 		let [sx,sy] = c[0]
 		for (let i=1; i<c.length; i+=2) {
 			let [cmd, ...args] = c[i]
@@ -147,21 +153,39 @@ function unparse_rel(contours) {
 				out += "Z"
 				break
 			}
+			if (0 && cmd=='C') {
+				let pp = c[i-1]
+				let pc = c[i-2]
+				let dx = args[0]-pp[0]
+				let dy = args[1]-pp[1]
+				
+				if (pc && pc[0]=='C') {
+					if (pp[0]-dx == pc[1] && pp[1]-dy == pc[2]) {
+						cmd = "S"
+						args = args.slice(2)
+					}
+				} else {
+					if (dx==0 && dy==0) {
+						cmd = "S"
+						args = args.slice(2)
+					}
+				}
+			}
 			let pos = c[(i+1) % c.length]
 			let [nx,ny] = pos
-			pos[0] -= sx
-			pos[1] -= sy
-			out += cmd.toLowerCase() + " "
+			out += cmd.toLowerCase()// + " "
 			if (cmd=='A') {
-				out += fmt(args) + " " // todo: custom formatting for A
+				out += fmt(args) // todo: custom formatting for A
 			} else {
 				for (let j=0;j<args.length;j+=2) {
 					args[j+0] -= sx
 					args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
 				}
-				out += fmt(args) + " "
+				out += fmt(args)
 			}
-			out += fmt(pos) + " "
+			if (args.length)
+				out += " "
+			out += fmt([pos[0]-sx,pos[1]-sy]) + " "
 			0,[sx,sy] = [nx,ny]
 		}
 	}
@@ -189,7 +213,10 @@ function unparse(contours) {
 
 let cc = parse(process.argv[2])
 let s = unparse(cc)
-console.log(cc,s)
-rev1(cc[0])
+//console.log(cc,s)
+//rev1(cc[0])
 s = unparse_rel(cc)
 console.log(s)
+// todo: check if console.log is slowing down startup
+//
+//M20.896,18.375 c0.318,1.396,2.009,4.729 2.009,4.729 c0,0,-1.639,1.477 -2.987,1.437 l-1.955,-2.841 l-1.735,2.446 c0,0,-1.713,-1.274 -2.931,-1.485 c0,0,1.666,-3.182 2.023,-3.856 c0.357,-0.674,1.057,-1.547 1.057,-1.547 c0,0,4.271,0.028 4.519,1.117 Z
