@@ -35,18 +35,23 @@ function parse(str) {
 			return m
 		}
 	}
-	
-	function autoclose() {
-		if (contour) {
-			contour.push(['M']) // gap (unclosed contour)
-			contours.push(contour)
-		}
-	}
-	
+		
 	let contours = [], contour = null
 	
 	let px=0, py=0 // current pen pos
 	let sx=0, sy=0 // contour start
+	
+	function autoclose() {
+		if (contour) {
+			if (px==sx && py==sy)
+				contour.pop()
+			else
+				contour.push(['L'])
+			//contour.push(['M']) // gap (unclosed contour)
+			contours.push(contour)
+		}
+	}
+	
 	while (1) {
 		if (i==str.length)
 			break
@@ -61,7 +66,10 @@ function parse(str) {
 		}
 		if (cmd=='Z') {
 			if (contour) {
-				contour.push(['L'])
+				if (px==sx && py==sy)
+					contour.pop()
+				else
+					contour.push(['L'])
 				contours.push(contour)
 				contour = null
 				px = sx
@@ -110,11 +118,11 @@ function parse(str) {
 				contour.push(['C',x,y,px+pnum(args[1]),py+pnum(args[2])])
 			} else if (cmd=='T') {
 				let last = contour[contour.length-1]
-				let x=nx,y=ny
-				if (contour[contour.length-2][0]=='Q') {
-					let last = contour[contour.length-1]
-					x += nx-last[0]
-					y += ny-last[1]
+				let lastc = contour[contour.length-2]
+				let [x,y] = last
+				if (lastc[0]=="Q") {
+					x += x-lastc[1]
+					y += y-lastc[2]
 				}
 				contour.push(['Q',x,y])
 			}
@@ -144,18 +152,51 @@ function fmt(list) {
 	return list.map(x=>String(x/1e5)).join(",")//.replace(/^[^-]/,'+$&')).join("")
 }
 
+function next(c, i) {
+	return c[(i+1) % c.length]
+}
+
+function check(c) {
+	for (let i=1; i<c.length; i+=2) {
+		let cmd = c[i]
+		let pp = c[i-1]
+		let np = next(c, i)
+		if (cmd[0]=='C') {
+			let [,x1,y1,x2,y2] = cmd
+			let o1 = orientation(pp,[x1,y1],np)
+			let o2 = orientation(pp,[x2,y2],np)
+			if (o1==0 && o2==0)
+				console.warn('degenerate cubic bezier')
+		}
+		if (cmd[0]=='Q') {
+			let [,x1,y1] = cmd
+			let o1 = orientation(pp,[x1,y1],np)
+			if (o1==0)
+				console.warn('degenerate quadratic bezier')
+		}
+		if (cmd[0]=='L' && pp[0]==np[0] && pp[1]==np[1]) {
+			console.warn('consecutive coincident points')
+		} else if (cmd[0]=='L' && next(c, i+1)[0]=='L') {
+			let np2 = next(c, i+2)
+			let o1 = orientation(pp,np,np2)
+			if (o1==0)
+				console.warn('consecutive collinear line segments')
+		}
+	}
+}
+
 function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
-		out += "\nM"+fmt(c[0])+" "
+		out += "\nM "+fmt(c[0])+" "
 		let [sx,sy] = c[0]
 		for (let i=1; i<c.length; i+=2) {
 			let [cmd, ...args] = c[i]
-			if (cmd=='L' && i==c.length-1) {
+			/*if (cmd=='L' && i==c.length-1) {
 				out += "Z"
 				break
-			}
-			if (0 && cmd=='C') {
+			}*/
+			if (cmd=='C') {
 				let pp = c[i-1]
 				let pc = c[i-2]
 				let dx = args[0]-pp[0]
@@ -175,21 +216,30 @@ function unparse_rel(contours) {
 			}
 			let pos = c[(i+1) % c.length]
 			let [nx,ny] = pos
-			out += cmd.toLowerCase()// + " "
-			if (cmd=='A') {
-				out += fmt(args) // todo: custom formatting for A
+			if (cmd=='L') {
+				if (nx==sx)
+					out += "\nv " + fmt([pos[1]-sy]) + " "
+				if (ny==sy)
+					out += "\nh " + fmt([pos[0]-sx]) + " "
 			} else {
-				for (let j=0;j<args.length;j+=2) {
-					args[j+0] -= sx
-					args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
+				out += "\n"+cmd.toLowerCase() + " "
+				if (cmd=='A') {
+					out += fmt(args) // todo: custom formatting for A
+				} else {
+					for (let j=0;j<args.length;j+=2) {
+						args[j+0] -= sx
+						args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
+					}
+					
+					out += fmt(args)
 				}
-				out += fmt(args)
+				if (args.length)
+					out += " "
+				out += fmt([pos[0]-sx,pos[1]-sy]) + " "
 			}
-			if (args.length)
-				out += " "
-			out += fmt([pos[0]-sx,pos[1]-sy]) + " "
 			0,[sx,sy] = [nx,ny]
 		}
+		out += "\nZ"
 	}
 	return out
 }
@@ -218,7 +268,8 @@ function orientation(a, b, c) {
 }
 
 function or(seg) {
-	for (let i=0; i<seg.length-1; i+=2) {
+	let sl = seg.length-1
+	for (let i=0; i<sl; i+=2) {
 		let a = seg[i % seg.length]
 		let b = seg[(i+2) % seg.length]
 		let c = seg[(i+4) % seg.length]
@@ -232,8 +283,11 @@ let cc = parse(process.argv[2])
 console.warn(cc)
 //rev1(cc[0])
 //or(cc[0])
+check(cc[0])
 let s = unparse_rel(cc)
 console.log(s)
 // todo: check if console.log is slowing down startup
 //
 //M20.896,18.375 c0.318,1.396,2.009,4.729 2.009,4.729 c0,0,-1.639,1.477 -2.987,1.437 l-1.955,-2.841 l-1.735,2.446 c0,0,-1.713,-1.274 -2.931,-1.485 c0,0,1.666,-3.182 2.023,-3.856 c0.357,-0.674,1.057,-1.547 1.057,-1.547 c0,0,4.271,0.028 4.519,1.117 Z
+
+//M100 100 L 200 200 500 500 500 500 L 600 50 z - warnings
