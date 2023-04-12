@@ -77,8 +77,10 @@ function parse(str) {
 			throw new Error('not enough args'+str.slice(i-1, i+20))
 		do {
 			if (!rel) {
-				px = 0
-				py = 0
+				if (cmd!='V')
+					px = 0
+				if (cmd!='H')
+					py = 0
 			}
 			let nx = px + pnum(args[args.length-2]??'0')
 			let ny = py + pnum(args[args.length-1]??'0')
@@ -211,11 +213,26 @@ function unparse(contours) {
 	return out
 }
 
+function orientation(a, b, c) {
+	return (a[0]*b[1] + b[0]*c[1] + c[0]*a[1]) - (a[1]*b[0] + b[1]*c[0] + c[1]*a[0])
+}
+
+function or(seg) {
+	for (let i=0; i<seg.length-1; i+=2) {
+		let a = seg[i % seg.length]
+		let b = seg[(i+2) % seg.length]
+		let c = seg[(i+4) % seg.length]
+		let o = orientation(a,b,c)
+		console.warn(o)
+	}
+}
+
 let cc = parse(process.argv[2])
-let s = unparse(cc)
-//console.log(cc,s)
+//let s = unparse(cc)
+console.warn(cc)
 //rev1(cc[0])
-s = unparse_rel(cc)
+//or(cc[0])
+let s = unparse_rel(cc)
 console.log(s)
 // todo: check if console.log is slowing down startup
 //
