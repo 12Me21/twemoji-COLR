@@ -16,7 +16,7 @@ let argtypes = {
 	C: rx_num6,
 	S: rx_num4,
 	Q: rx_num4,
-	T: rx_num4,
+	T: rx_num2,
 	A: rx_arc,
 }
 
@@ -207,11 +207,15 @@ function half_arc_at(c, i) {
 	// ideal distance 2's
 	let id2a = [d1[1],-d1[0]]
 	let id2b = [-d1[1],d1[0]]
-	console.log(p0,p1,p2,d1, d2,'|',id2a,id2b)
-	if (dist(id2a,d2) < 1000) {
-		console.warn('half arc?')
-	} else if (dist(id2b,d2) < 1000) {
-		console.warn('half arc?')
+	//console.log(p0,p1,p2,d1, d2,'|',id2a,id2b)
+	let ea = dist(id2a,d2)
+	if (ea < 10000) {
+		console.warn('half arc?', ea, dist(p0, p2))
+	} else {
+		let eb = dist(id2a,d2)
+		if (eb < 10000) {
+			console.warn('half arc?', eb, dist(p0, p2))
+		}
 	}
 }
 
@@ -306,6 +310,18 @@ function orientation(a, b, c) {
 	return (a[0]*b[1] + b[0]*c[1] + c[0]*a[1]) - (a[1]*b[0] + b[1]*c[0] + c[1]*a[0])
 }
 
+// nnhh this is supposed to make it so that we don't interrupt smooth (missing out on the chance for a 's' command but nnh..
+function pick_good_start(c) {
+	//console.warn('spin?', c)
+	if (!c.some(x=>x[0]==='L'))
+		return
+	while (c[1][0]!='L') {
+		console.warn('spin!')
+		c.push(c.shift())
+		c.push(c.shift())
+	}
+}
+
 function or(seg) {
 	let sl = seg.length-1
 	for (let i=0; i<sl; i+=2) {
@@ -320,10 +336,13 @@ function or(seg) {
 let cc = parse(process.argv[2])
 //let s = unparse(cc)
 console.warn(cc)
+
 //rev1(cc[0])
-//or(cc[0])
-for (let c of cc)
+for (let c of cc) {
+	pick_good_start(c)
+	or(c)
 	check(c)
+}
 let s = unparse_rel(cc)
 console.log(s)
 // todo: check if console.log is slowing down startup
