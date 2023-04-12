@@ -182,6 +182,36 @@ function check(c) {
 			if (o1==0)
 				console.warn('consecutive collinear line segments')
 		}
+		
+		if (half_arc_at(c, i-1))
+			;
+	}
+}
+
+function get(c, i) {
+	let l = c.length
+	return c[(i % l + l) % l]
+}
+
+function dist(p1, p2) {
+	return Math.hypot(p2[0]-p1[0], p2[1]-p1[1])
+}
+
+function half_arc_at(c, i) {
+	let p0 = get(c, i-2)
+	let p1 = get(c, i)
+	let p2 = get(c, i+2)
+	let d1 = [p0[0]-p1[0],p0[1]-p1[1]]
+	let d2 = [p2[0]-p1[0],p2[1]-p1[1]]
+	// eg: d1 is [68,235], d2 is [235,-70] or [-235,70]
+	// ideal distance 2's
+	let id2a = [d1[1],-d1[0]]
+	let id2b = [-d1[1],d1[0]]
+	console.log(p0,p1,p2,d1, d2,'|',id2a,id2b)
+	if (dist(id2a,d2) < 1000) {
+		console.warn('half arc?')
+	} else if (dist(id2b,d2) < 1000) {
+		console.warn('half arc?')
 	}
 }
 
@@ -204,8 +234,12 @@ function unparse_rel(contours) {
 				let dy = args[1]-pp[1]
 				
 				if (pc && pc[0]=='C') {
-					//console.warn('s',pp[0],dx,pc[3],pp[1],dy,pc[4])
-					if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
+					console.warn('s',pp[0]-dx-pc[3],pp[1]-dy-pc[4])
+					let ex = pp[0]-dx-pc[3]
+					let ey = pp[1]-dy-pc[4]
+					// todo: we should average the err between the prev and nex controlpoints
+					if (ex*ex + ey*ey <= 100*100) {
+					//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
 						cmd = "S"
 						args = args.slice(2)
 					}
@@ -297,3 +331,6 @@ console.log(s)
 //M20.896,18.375 c0.318,1.396,2.009,4.729 2.009,4.729 c0,0,-1.639,1.477 -2.987,1.437 l-1.955,-2.841 l-1.735,2.446 c0,0,-1.713,-1.274 -2.931,-1.485 c0,0,1.666,-3.182 2.023,-3.856 c0.357,-0.674,1.057,-1.547 1.057,-1.547 c0,0,4.271,0.028 4.519,1.117 Z
 
 //M100 100 L 200 200 500 500 500 500 L 600 50 z - warnings
+/*
+test s command generation:
+M12.45 21.329s-2.459 4.086-1.78 5.652c.409.945 1.123 2.064 2.389 2.271.423.069.623.898.501 1.505-.139.686-.621 1.646-.886 2.132-.265.487-.777.481-1.411 1.041-.442.39-.597 1.075.153 1.082l3.545.029c.664.006 1.093-.398 1.24-1.067.204-.928.76-4.461.551-5.146-.15-.491-.667-.886-.995-1.835-.243-.703.343-1.803.343-1.803l-3.65-3.861zm-5.748-5.571s.824-.146 1.272-.061c.448.086 1.705 1.019 2.085 1.16.38.141 1.299-.075 1.299-.075s1.065 1.436.995 1.581c-.07.145-1.617.47-1.981.579-.363.109-1.755-2.081-2.146-2.327s-.98.359-1.373.341c-.392-.018-.282-.298-.005-.374 0 0-.467.157-.483-.019-.016-.176.388-.281.388-.281s-.409.146-.475-.026c-.064-.172.063-.38.424-.498z **/
