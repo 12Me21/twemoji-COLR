@@ -174,8 +174,8 @@ function check(c) {
 			if (o1==0)
 				console.warn('degenerate quadratic bezier')
 		}
-		if (cmd[0]=='L' && pp[0]==np[0] && pp[1]==np[1]) {
-			console.warn('consecutive coincident points')
+		if (pp[0]==np[0] && pp[1]==np[1]) {
+			console.warn('consecutive coincident points around '+cmd)
 		} else if (cmd[0]=='L' && next(c, i+1)[0]=='L') {
 			let np2 = next(c, i+2)
 			let o1 = orientation(pp,np,np2)
