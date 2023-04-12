@@ -111,7 +111,7 @@ function parse(str) {
 				let last = contour[contour.length-1]
 				let lastc = contour[contour.length-2]
 				let [x,y] = last
-				if (lastc[0]=="C") {
+				if (lastc && lastc[0]=="C") {
 					x += x-lastc[3]
 					y += y-lastc[4]
 				}
@@ -120,7 +120,7 @@ function parse(str) {
 				let last = contour[contour.length-1]
 				let lastc = contour[contour.length-2]
 				let [x,y] = last
-				if (lastc[0]=="Q") {
+				if (lastc && lastc[0]=="Q") {
 					x += x-lastc[1]
 					y += y-lastc[2]
 				}
@@ -188,6 +188,7 @@ function check(c) {
 function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
+		console.warn('m')
 		out += "\nM "+fmt(c[0])+" "
 		let [sx,sy] = c[0]
 		for (let i=1; i<c.length; i+=2) {
@@ -203,7 +204,8 @@ function unparse_rel(contours) {
 				let dy = args[1]-pp[1]
 				
 				if (pc && pc[0]=='C') {
-					if (pp[0]-dx == pc[1] && pp[1]-dy == pc[2]) {
+					//console.warn('s',pp[0],dx,pc[3],pp[1],dy,pc[4])
+					if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
 						cmd = "S"
 						args = args.slice(2)
 					}
@@ -219,8 +221,11 @@ function unparse_rel(contours) {
 			if (cmd=='L') {
 				if (nx==sx)
 					out += "\nv " + fmt([pos[1]-sy]) + " "
-				if (ny==sy)
+				else if (ny==sy)
 					out += "\nh " + fmt([pos[0]-sx]) + " "
+				else {
+					out += "\nl " + fmt([pos[0]-sx,pos[1]-sy]) + " "
+				}
 			} else {
 				out += "\n"+cmd.toLowerCase() + " "
 				if (cmd=='A') {
@@ -283,7 +288,8 @@ let cc = parse(process.argv[2])
 console.warn(cc)
 //rev1(cc[0])
 //or(cc[0])
-check(cc[0])
+for (let c of cc)
+	check(c)
 let s = unparse_rel(cc)
 console.log(s)
 // todo: check if console.log is slowing down startup
