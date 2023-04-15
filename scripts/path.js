@@ -35,7 +35,7 @@ function parse(str) {
 			return m
 		}
 	}
-		
+	
 	let contours = [], contour = null
 	
 	let px=0, py=0 // current pen pos
@@ -148,6 +148,41 @@ function rev1(c) {
 	return rev1
 }
 
+function to_rrect(c) {
+	let s
+	let corners = {
+		
+	}
+	for (s=1; s<c.length; s+=2) {
+		if (c[s][0]=="C") {
+			let p1 = get(c, s-1)
+			let p2 = get(c, s+1)
+			let d = [p2[0]-p1[0], p2[1]-p1[1]]
+			// found corner
+			if (Math.abs(Math.abs(d[0])-Math.abs(d[1])) <= 200) {
+				console.log("corner", d)
+				if (d[0] < 0) {
+					if (d[1] < 0) {
+						corners.bottomleft = [p2[0],p1[1]]
+						console.log("bottomleft")
+					} else {
+						corners.bottomright = [p1[0],p2[1]]
+						console.log("bottomright")
+					}
+				} else {
+					if (d[1] < 0) {
+						corners.topleft = [p1[0],p2[1]]
+						console.log("topleft")
+					} else {
+						corners.topright = [p2[0],p1[1]]
+						console.log("topright")
+					}
+				}
+			}
+		}
+	}
+}
+
 function fmt(list) {
 	return list.map(x=>String(x/1e5)).join(",")//.replace(/^[^-]/,'+$&')).join("")
 }
@@ -254,6 +289,29 @@ function unparse_rel(contours) {
 					}
 				}
 			}
+			if (cmd=='Q') {
+				let pp = c[i-1]
+				let pc = c[i-2]
+				let dx = args[0]-pp[0]
+				let dy = args[1]-pp[1]
+				
+				if (pc && pc[0]=='Q') {
+					console.warn('t',pp[0]-dx-pc[1],pp[1]-dy-pc[2])
+					let ex = pp[0]-dx-pc[1]
+					let ey = pp[1]-dy-pc[2]
+					// todo: we should average the err between the prev and nex controlpoints
+					if (ex*ex + ey*ey <= 100000*100000) {
+					//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
+						cmd = "T"
+						args = []
+					}
+				} else {
+					if (dx==0 && dy==0) {
+						cmd = "T"
+						args = []
+					}
+				}
+			}
 			let pos = c[(i+1) % c.length]
 			let [nx,ny] = pos
 			if (cmd=='L') {
@@ -322,6 +380,20 @@ function pick_good_start(c) {
 	}
 }
 
+function find_top(seg) {
+	let best
+	for (let i=0; i<seg.length; i+=2) {
+		if (!best || seg[i][1] < seg[best][1])
+			best = i
+	}
+	let a = get(seg, best-2)
+	let b = get(seg, best)
+	let c = get(seg, best+2)
+	let o = orientation(a,b,c)
+	console.warn('top orientation', o)
+	return o
+}
+
 function or(seg) {
 	let sl = seg.length-1
 	for (let i=0; i<sl; i+=2) {
@@ -339,10 +411,13 @@ console.warn(cc)
 
 //rev1(cc[0])
 for (let c of cc) {
-	pick_good_start(c)
+	//pick_good_start(c)
+	if (find_top(c) < 0)
+		rev1(c)
 	or(c)
 	check(c)
 }
+to_rrect(cc[0])
 let s = unparse_rel(cc)
 console.log(s)
 // todo: check if console.log is slowing down startup
