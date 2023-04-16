@@ -56,8 +56,11 @@ function parse(str) {
 		if (i==str.length)
 			break
 		let cmd = eat(rx_cmd)
-		if (!cmd)
+		if (!cmd) {
+			if (i == str.search(/\s+$/))
+				break
 			throw new Error('unknown thing in path: '+str.slice(i-3, i+3+1))
+		}
 		cmd = str.charAt(i-1)
 		let rel
 		if (cmd>='a') {
@@ -153,34 +156,62 @@ function to_rrect(c) {
 	let corners = {
 		
 	}
+	let rads = []
 	for (s=1; s<c.length; s+=2) {
 		if (c[s][0]=="C") {
 			let p1 = get(c, s-1)
 			let p2 = get(c, s+1)
 			let d = [p2[0]-p1[0], p2[1]-p1[1]]
 			// found corner
-			if (Math.abs(Math.abs(d[0])-Math.abs(d[1])) <= 200) {
-				console.log("corner", d)
+			if (1 || Math.abs(Math.abs(d[0])-Math.abs(d[1])) <= 1000) {
+				rads.push([Math.abs(d[0]),Math.abs(d[1])])
+				console.warn("corner", d)
 				if (d[0] < 0) {
 					if (d[1] < 0) {
 						corners.bottomleft = [p2[0],p1[1]]
-						console.log("bottomleft")
 					} else {
 						corners.bottomright = [p1[0],p2[1]]
-						console.log("bottomright")
 					}
 				} else {
 					if (d[1] < 0) {
 						corners.topleft = [p1[0],p2[1]]
-						console.log("topleft")
 					} else {
 						corners.topright = [p2[0],p1[1]]
-						console.log("topright")
 					}
 				}
 			}
 		}
 	}
+	//console.log("corners", corners, rads)
+	let rx = 0, ry=0
+	for (let r of rads) {
+		rx += r[0]
+		ry += r[1]
+	}
+	rx /= rads.length
+	ry /= rads.length
+	for (let r of rads) {
+		if (dist([rx,ry], r) >= 400)
+			throw new Error('bad corners')
+	}
+	let x = corners.topleft[0]
+	let y = corners.topleft[1]
+	let w = corners.bottomright[0] - x
+	let h = corners.bottomright[1] - y
+	console.warn("corners", corners, rads)
+	if (
+		corners.topleft[0] != corners.bottomleft[0] ||
+			corners.topright[0] != corners.bottomright[0] ||
+		corners.topleft[1] != corners.topright[1] ||
+			corners.bottomleft[1] != corners.bottomright[1]) {
+		throw new Error('not rectangle')
+	}
+	if (rx*2 == w && ry*2 == h)
+		return `<ellipse cx="${fmt([x+w/2])}" cy="${fmt([y+h/2])}" rx="${fmt([w/2])}" ry="${fmt([h/2])}"`
+	if (rx==ry)
+		return `<rect x="${fmt([x])}" y="${fmt([y])}" width="${fmt([w])}" height="${fmt([h])}" rx="${fmt([(rx+ry)/2])}"`
+	else
+		return `<rect x="${fmt([x])}" y="${fmt([y])}" width="${fmt([w])}" height="${fmt([h])}" rx="${fmt([rx])}" ry="${fmt([ry])}"`
 }
 
 function fmt(list) {
@@ -405,21 +436,28 @@ function or(seg) {
 	}
 }
 
-let cc = parse(process.argv[2])
-//let s = unparse(cc)
-console.warn(cc)
-
-//rev1(cc[0])
-for (let c of cc) {
-	//pick_good_start(c)
-	if (find_top(c) < 0)
-		rev1(c)
-	or(c)
-	check(c)
-}
-to_rrect(cc[0])
-let s = unparse_rel(cc)
-console.log(s)
+let xml = process.argv[2]
+xml = xml.replace(/<path d="([^">]*)" ?([^>]*>)/g, (m,d,a)=>{
+	let cc = parse(d)
+	//let s = unparse(cc)
+	console.warn(cc)
+	
+	let out = ""
+	
+	//rev1(cc[0])
+	for (let c of cc) {
+		//pick_good_start(c)
+		if (find_top(c) < 0)
+			rev1(c)
+		or(c)
+		check(c)
+		out += to_rrect(c)+" "+a+""
+	}
+	return out//out+" "+a
+})
+process.stdout.write(xml+"\n")
+//let s = unparse_rel(cc)
+//console.log(s)
 // todo: check if console.log is slowing down startup
 //
 //M20.896,18.375 c0.318,1.396,2.009,4.729 2.009,4.729 c0,0,-1.639,1.477 -2.987,1.437 l-1.955,-2.841 l-1.735,2.446 c0,0,-1.713,-1.274 -2.931,-1.485 c0,0,1.666,-3.182 2.023,-3.856 c0.357,-0.674,1.057,-1.547 1.057,-1.547 c0,0,4.271,0.028 4.519,1.117 Z
