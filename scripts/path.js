@@ -3,26 +3,44 @@ class Point {
 		this.x = x
 		this.y = y
 	}
+	fmt(rel) {
+		let {x,y} = this
+		if (rel) {
+			x -= rel.x
+			y -= rel.y
+		}
+		return `${x/1e5},${y/1e5}`
+	}
 }
 
 class Seg {
+	reverse() {
+	}
 }
 
 class SegL extends Seg {
 }
+SegL.prototype.letter = "l"
 
 class SegC extends Seg {
 	constructor(c1, c2) {
 		this.c1 = c1
 		this.c2 = c2
 	}
+	reverse() {
+		let temp = this.c1
+		this.c1 = this.c2
+		this.c2 = temp
+	}
 }
+SegC.prototype.letter = "c"
 
 class SegQ extends Seg {
 	constructor(c) {
 		this.c = c
 	}
 }
+SegQ.prototype.letter = "q"
 
 class SegA extends Seg {
 	constructor(radius,angle,large,sweep) {
@@ -31,7 +49,11 @@ class SegA extends Seg {
 		this.large = large
 		this.sweep = sweep
 	}
+	reverse() {
+		this.sweep = !this.sweep
+	}
 }
+SegA.prototype.letter = "a"
 
 let rx_num = /[\s,]*([-+]?\d*(?:[.]\d+(?!\d)|\d(?![\d.]))(?:[Ee][-+]?\d+(?!\d))?)/
 
@@ -81,9 +103,10 @@ function parse(str) {
 			if (px==sx && py==sy)
 				contour.pop()
 			else
-				contour.push(['L'])
+				contour.push(new SegL())
 			//contour.push(['M']) // gap (unclosed contour)
 			contours.push(contour)
+			contour = null
 		}
 	}
 	
@@ -103,18 +126,10 @@ function parse(str) {
 			cmd = cmd.toUpperCase()
 		}
 		if (cmd=='Z') {
-			if (contour) {
-				if (px==sx && py==sy)
-					contour.pop()
-				else
-					contour.push(['L'])
-				contours.push(contour)
-				contour = null
-				px = sx
-				py = sy
-			}
+			autoclose()
+			px = sx
+			py = sy
 			continue
-			//
 		}
 		let rx_arg = argtypes[cmd]
 		
@@ -134,17 +149,19 @@ function parse(str) {
 			if (cmd=='M') {
 				autoclose()
 				contour = []
-				sx=nx
-				sy=ny
-				cmd = 'L'
+				sx = nx
+				sy = ny
 			} else if (cmd=='H'||cmd=='V'||cmd=='L') {
-				contour.push(['L'])
+				contour.push(new SegL())
 			} else if (cmd=='A') {
-				contour.push(['A',args[1],args[2],args[3],args[4],args[5]])
+				contour.push(new SegA(new Point(args[1],args[2]),args[3],args[4],args[5]))
 			} else if (cmd=='C') {
-				contour.push(['C',px+pnum(args[1]),py+pnum(args[2]),px+pnum(args[3]),py+pnum(args[4])])
+				contour.push(new SegC(
+					new Point(px+pnum(args[1]),py+pnum(args[2])),
+					new Point(px+pnum(args[3]),py+pnum(args[4])),
+				))
 			} else if (cmd=='Q') {
-				contour.push(['Q',px+pnum(args[1]),py+pnum(args[2])])
+				contour.push(new SegQ(new Point(px+pnum(args[1]),py+pnum(args[2]))))
 			} else if (cmd=='S') {
 				let last = contour[contour.length-1]
 				let lastc = contour[contour.length-2]
@@ -153,7 +170,7 @@ function parse(str) {
 					x += x-lastc[3]
 					y += y-lastc[4]
 				}
-				contour.push(['C',x,y,px+pnum(args[1]),py+pnum(args[2])])
+				contour.push(new SegC(new Point(x,y),new Point(px+pnum(args[1]),py+pnum(args[2]))))
 			} else if (cmd=='T') {
 				let last = contour[contour.length-1]
 				let lastc = contour[contour.length-2]
@@ -162,11 +179,11 @@ function parse(str) {
 					x += x-lastc[1]
 					y += y-lastc[2]
 				}
-				contour.push(['Q',x,y])
+				contour.push(new SegQ(new Point(x,y)))
 			}
 			px = nx
 			py = ny
-			contour.push([nx,ny])
+			contour.push(new Point(nx,ny))
 		} while (args = eat(rx_arg))
 	}
 	autoclose()
@@ -178,10 +195,7 @@ function rev1(c) {
 	c.unshift(c.pop())
 	for (let i=1; i<c.length; i+=2) {
 		let seg = c[i]
-		if (seg[0]=='C')
-			c[i] = ['C',seg[3],seg[4],seg[1],seg[2]]
-		if (seg[0]=='A')
-			seg[0][5] = +!seg[0][5]
+		seg.reverse()
 	}
 	return rev1
 }
@@ -295,7 +309,7 @@ function get(c, i) {
 }
 
 function dist(p1, p2) {
-	return Math.hypot(p2[0]-p1[0], p2[1]-p1[1])
+	return Math.hypot(p2.x-p1.x, p2.y-p1.y)
 }
 
 function half_arc_at(c, i) {
@@ -324,24 +338,24 @@ function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
 		console.warn('m')
-		out += "\nM "+fmt(c[0])+" "
-		let [sx,sy] = c[0]
+		let prev = c[0]
+		out += "\nM "+prev.fmt()+" "
 		for (let i=1; i<c.length; i+=2) {
-			let [cmd, ...args] = c[i]
+			let seg = c[i]
+			//let [cmd, ...args] = c[i]
 			/*if (cmd=='L' && i==c.length-1) {
 				out += "Z"
 				break
 			}*/
-			if (cmd=='C') {
+			if (seg instanceof SegC) {
 				let pp = c[i-1]
 				let pc = c[i-2]
-				let dx = args[0]-pp[0]
-				let dy = args[1]-pp[1]
+				let dx = seg.c1.x-pp.x
+				let dy = seg.c1.x-pp.y
 				
-				if (pc && pc[0]=='C') {
-					console.warn('s',pp[0]-dx-pc[3],pp[1]-dy-pc[4])
-					let ex = pp[0]-dx-pc[3]
-					let ey = pp[1]-dy-pc[4]
+				if (pc instanceof SegC) {
+					let ex = pp.x - dx - pc.c2.x
+					let ey = pp.y - dy - pc.c2.y
 					// todo: we should average the err between the prev and nex controlpoints
 					if (ex*ex + ey*ey <= 100*100) {
 					//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
@@ -354,17 +368,15 @@ function unparse_rel(contours) {
 						args = args.slice(2)
 					}
 				}
-			}
-			if (cmd=='Q') {
+			} else if (seg instanceof SegQ) {
 				let pp = c[i-1]
 				let pc = c[i-2]
-				let dx = args[0]-pp[0]
-				let dy = args[1]-pp[1]
+				let dx = seg.c.x-pp.x
+				let dy = seg.c.y-pp.y
 				
-				if (pc && pc[0]=='Q') {
-					console.warn('t',pp[0]-dx-pc[1],pp[1]-dy-pc[2])
-					let ex = pp[0]-dx-pc[1]
-					let ey = pp[1]-dy-pc[2]
+				if (pc instanceof SegQ) {
+					let ex = pp.x - dx - pc.c.x
+					let ey = pp.y - dy - pc.c.y
 					// todo: we should average the err between the prev and nex controlpoints
 					if (ex*ex + ey*ey <= 100000*100000) {
 					//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
@@ -378,33 +390,32 @@ function unparse_rel(contours) {
 					}
 				}
 			}
-			let pos = c[(i+1) % c.length]
-			let [nx,ny] = pos
-			if (cmd=='L') {
-				if (nx==sx)
-					out += "\nv " + fmt([pos[1]-sy]) + " "
-				else if (ny==sy)
-					out += "\nh " + fmt([pos[0]-sx]) + " "
+			let pos = get(c, i+1)
+			if (seg instanceof SegL) {
+				if (pos.x==prev.x)
+					out += "\nv " + fmt([pos.y-prev.y]) + " "
+				else if (pos.y==prev.y)
+					out += "\nh " + fmt([pos.x-prev.x]) + " "
 				else {
-					out += "\nl " + fmt([pos[0]-sx,pos[1]-sy]) + " "
+					out += "\nl " + pos.fmt(prev) + " "
 				}
 			} else {
-				out += "\n"+cmd.toLowerCase() + " "
-				if (cmd=='A') {
-					out += fmt(args) // todo: custom formatting for A
+				out += "\n"+seg.letter + " "
+				console.log(seg)
+				if (seg instanceof SegA) {
+					out += seg.radius.fmt() + " " + fmt([seg.angle]) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0") + " "
 				} else {
 					for (let j=0;j<args.length;j+=2) {
-						args[j+0] -= sx
-						args[j+1] -= sy // hnm maybe args should be like ['C',[x,y],[x,y]]...
+						args[j+0] -= prev.x
+						args[j+1] -= prev.y // hnm maybe args should be like ['C',[x,y],[x,y]]...
 					}
-					
 					out += fmt(args)
 				}
 				if (args.length)
 					out += " "
-				out += fmt([pos[0]-sx,pos[1]-sy]) + " "
+				out += pos.fmt(prev) + " "
 			}
-			0,[sx,sy] = [nx,ny]
+			prev = pos
 		}
 		out += "\nZ"
 	}
@@ -431,7 +442,7 @@ function unparse(contours) {
 }
 
 function orientation(a, b, c) {
-	return (a[0]*b[1] + b[0]*c[1] + c[0]*a[1]) - (a[1]*b[0] + b[1]*c[0] + c[1]*a[0])
+	return (a.x*b.y + b.x*c.y + c.x*a.y) - (a.y*b.x + b.y*c.x + c.y*a.x)
 }
 
 // nnhh this is supposed to make it so that we don't interrupt smooth (missing out on the chance for a 's' command but nnh..
@@ -449,7 +460,7 @@ function pick_good_start(c) {
 function find_top(seg) {
 	let best
 	for (let i=0; i<seg.length; i+=2) {
-		if (!best || seg[i][1] < seg[best][1])
+		if (!best || seg[i].y < seg[best].y)
 			best = i
 	}
 	let a = get(seg, best-2)
