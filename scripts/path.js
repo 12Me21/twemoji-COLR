@@ -1,4 +1,39 @@
-let rx_num = /[\s,]*([-+]?\d*[.]?\d+(?:[Ee][-+]?\d+)?)/
+class Point {
+	constructor(x, y) {
+		this.x = x
+		this.y = y
+	}
+}
+
+class Seg {
+}
+
+class SegL extends Seg {
+}
+
+class SegC extends Seg {
+	constructor(c1, c2) {
+		this.c1 = c1
+		this.c2 = c2
+	}
+}
+
+class SegQ extends Seg {
+	constructor(c) {
+		this.c = c
+	}
+}
+
+class SegA extends Seg {
+	constructor(radius,angle,large,sweep) {
+		this.radius = radius
+		this.angle = angle
+		this.large = large
+		this.sweep = sweep
+	}
+}
+
+let rx_num = /[\s,]*([-+]?\d*(?:[.]\d+(?!\d)|\d(?![\d.]))(?:[Ee][-+]?\d+(?!\d))?)/
 
 let rx_x = new RegExp(rx_num.source+"(){0}", 'y')
 let rx_y = new RegExp("(){0}"+rx_num.source, 'y')
@@ -437,7 +472,18 @@ function or(seg) {
 }
 
 let xml = process.argv[2]
-xml = xml.replace(/<path d="([^">]*)" ?([^>]*>)/g, (m,d,a)=>{
+
+let cc= parse(xml)
+for (let c of cc) {
+	if (find_top(c) < 0) {
+		console.warn('counter-clockwise')
+		rev1(c)
+	} else
+		console.warn('clockwise')
+}
+console.log(unparse_rel(cc))
+
+/*xml = xml.replace(/<path d="([^">]*)" ?([^>]*>)/g, (m,d,a)=>{
 	let cc = parse(d)
 	//let s = unparse(cc)
 	console.warn(cc)
@@ -455,7 +501,7 @@ xml = xml.replace(/<path d="([^">]*)" ?([^>]*>)/g, (m,d,a)=>{
 	}
 	return out//out+" "+a
 })
-process.stdout.write(xml+"\n")
+process.stdout.write(xml+"\n")//*/
 //let s = unparse_rel(cc)
 //console.log(s)
 // todo: check if console.log is slowing down startup
