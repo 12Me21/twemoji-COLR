@@ -287,7 +287,7 @@
 				if (x==1)
 					col.name = 'color', col.value = this.$shape.getAttribute('fill')//.replace(/^#/,'')
 				else
-					col.name = 'note'
+					col.name = 'note', col.value = this.$shape.nodeName
 			}
 			
 			l._layer = this
@@ -445,6 +445,7 @@
 	}
 	
 	function go(name) {
+		//let n = load('original/simple/'+name+'.svg')
 		let n = load('original/'+name+'/neutral.svg')
 		let m = load('original/'+name+'/male.svg')
 		let f = load('original/'+name+'/female.svg')

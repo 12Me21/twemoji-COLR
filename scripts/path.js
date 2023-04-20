@@ -1,6 +1,12 @@
 function fmt(num) {
 	return String(num/1e5)//.replace(/^[^-]/,'+$&')).join("")
 }
+function pnum(ns) {
+	let n = Number(ns+"e+5")
+	if (isNaN(n))
+		throw new Error('invalid number: '+ns)
+	return n
+}
 
 class Point {
 	constructor(x, y) {
@@ -24,6 +30,9 @@ class Point {
 	Copy() {
 		return new Point(this.x, this.y)
 	}
+	static Parse(x, y, pos) {
+		return new this(pos.x+pnum(x), pos.y+pnum(y))
+	}
 }
 
 class Seg {
@@ -46,6 +55,23 @@ class SegC extends Seg {
 		this.c1 = this.c2
 		this.c2 = temp
 	}
+	static Parse(pos, args) {
+		return new this(
+			Point.Parse(args[1], args[2], pos),
+			Point.Parse(args[3], args[4], pos),
+		)
+	}
+	static ParseShorthand(pos, args, contour) {
+		let ppos = contour[contour.length-1]
+		let pseg = contour[contour.length-2]
+		let c1
+		if (pseg instanceof SegC)
+			c1 = ppos.Subtract(pseg.c2).Add(ppos)
+		else
+			c1 = ppos.Copy()
+		let c2 = Point.Parse(args[1], args[2], pos)
+		return new this(c1, c2)
+	}
 }
 SegC.prototype.letter = "c"
 
@@ -53,6 +79,20 @@ class SegQ extends Seg {
 	constructor(c) {
 		super()
 		this.c = c
+	}
+	static Parse(pos, args) {
+		let c = Point.Parse(args[1], args[2], pos)
+		return new this(c)
+	}
+	static ParseShorthand(pos, args, contour) {
+		let ppos = contour[contour.length-1]
+		let pseg = contour[contour.length-2]
+		let c
+		if (pseg instanceof SegQ)
+			c = ppos.Subtract(pseg.c).Add(ppos)
+		else
+			c = ppos.Copy()
+		return new this(c)
 	}
 }
 SegQ.prototype.letter = "q"
@@ -93,10 +133,6 @@ let argtypes = {
 	A: rx_arc,
 }
 
-function pnum(ns) {
-	return Number(ns+"e+5")
-}
-
 function parse(str) {
 	let m
 	let i = 0
@@ -111,12 +147,12 @@ function parse(str) {
 	
 	let contours = [], contour = null
 	
-	let px=0, py=0 // current pen pos
-	let sx=0, sy=0 // contour start
+	let pos = new Point(0, 0) // current pen pos
+	let start = new Point(0, 0) // contour start
 	
 	function autoclose() {
 		if (contour) {
-			if (px==sx && py==sy)
+			if (pos.x==start.x && pos.y==start.y)
 				contour.pop()
 			else
 				contour.push(new SegL())
@@ -141,10 +177,10 @@ function parse(str) {
 			rel = true
 			cmd = cmd.toUpperCase()
 		}
+		
 		if (cmd=='Z') {
 			autoclose()
-			px = sx
-			py = sy
+			pos = start.Copy()
 			continue
 		}
 		let rx_arg = argtypes[cmd]
@@ -155,52 +191,38 @@ function parse(str) {
 		do {
 			if (!rel) {
 				if (cmd!='V')
-					px = 0
+					pos.x = 0
 				if (cmd!='H')
-					py = 0
+					pos.y = 0
 			}
-			let nx = px + pnum(args[args.length-2]??'0')
-			let ny = py + pnum(args[args.length-1]??'0')
+			let next = pos.Add({
+				x: pnum(args[args.length-2]??'0'),
+				y: pnum(args[args.length-1]??'0'),
+			})
 			
 			if (cmd=='M') {
 				autoclose()
 				contour = []
-				sx = nx
-				sy = ny
+				start = next.Copy()
 			} else if (cmd=='H'||cmd=='V'||cmd=='L') {
 				contour.push(new SegL())
 			} else if (cmd=='A') {
-				contour.push(new SegA(new Point(pnum(args[1]),pnum(args[2])),pnum(args[3]),args[4]!=0,args[5]!=0))
-			} else if (cmd=='C') {
-				contour.push(new SegC(
-					new Point(px+pnum(args[1]),py+pnum(args[2])),
-					new Point(px+pnum(args[3]),py+pnum(args[4])),
+				contour.push(new SegA(
+					new Point(pnum(args[1]), pnum(args[2])),
+					pnum(args[3]),
+					args[4]!=0, args[5]!=0,
 				))
+			} else if (cmd=='C') {
+				contour.push(SegC.Parse(pos, args))
 			} else if (cmd=='Q') {
-				let c = new Point(px+pnum(args[1]),py+pnum(args[2]))
-				contour.push(new SegQ(c))
+				contour.push(SegQ.Parse(pos, args))
 			} else if (cmd=='S') {
-				let last = contour[contour.length-1]
-				let lastc = contour[contour.length-2]
-				let {x,y} = last
-				if (lastc instanceof SegC) {
-					x += x-lastc.c2.x
-					y += y-lastc.c2.y
-				}
-				contour.push(new SegC(new Point(x,y),new Point(px+pnum(args[1]),py+pnum(args[2]))))
+				contour.push(SegC.ParseShorthand(pos, args, contour))
 			} else if (cmd=='T') {
-				let last = contour[contour.length-1]
-				let lastc = contour[contour.length-2]
-				if (lastc instanceof SegQ) {
-					last = last.Add(last).Subtract(lastc.c)
-				} else {
-					last = last.Copy()
-				}
-				contour.push(new SegQ(last))
+				contour.push(SegQ.ParseShorthand(pos, args, contour))
 			}
-			px = nx
-			py = ny
-			contour.push(new Point(nx,ny))
+			pos = next.Copy()
+			contour.push(pos.Copy())
 		} while (args = eat(rx_arg))
 	}
 	autoclose()
@@ -398,9 +420,9 @@ function unparse_rel(contours) {
 			}
 			let pos = get(c, i+1)
 			if (seg instanceof SegL) {
-				if (pos.x==prev.x)
+				if (prev && pos.x==prev.x)
 					out += "v " + fmt(pos.y-prev.y) + " "
-				else if (pos.y==prev.y)
+				else if (prev && pos.y==prev.y)
 					out += "h " + fmt(pos.x-prev.x) + " "
 				else {
 					out += "l " + pos.fmt(prev) + " "
@@ -500,6 +522,58 @@ for (let c of cc) {
 }
 console.log(unparse_rel(cc))*/
 
+function rotate(list, amount) {
+	amount %= list.length
+	amount += list.length
+	amount %= list.length
+	let s=0, i=0
+	for (let n=0; n<list.length; n++) {
+		i+=amount
+		i%=list.length
+		if (i==s)
+			i = ++s
+		else
+			0,[list[s],list[i]] = [list[i],list[s]]
+	}
+}
+
+// idea: store contour as linked list? each point links to a prev/next point as well as a prev/next segment ? nnhh
+
+function findscale(c1, c2) {
+	let scales = []
+	function compare(p1, p2) {
+		let x2 = (p2.x)
+		let x1 = (p1.x-19e5)
+		let y2 = (p2.y)
+		let y1 = (p1.y-24e5)
+		let size = Math.hypot(x1,x2)
+		//if (size > 1000000)
+		scales.push([size, new Point(x2/x1,y2/y1)])
+	}
+	for (let i=0; i<c1.length; i++) {
+		let u1 = c1[i]
+		let u2 = c2[i]
+		
+		if (u1 instanceof Point)
+			compare(u1, u2)
+		if (u1.c instanceof Point)
+			compare(u1.c, u2.c)
+		if (u1.c1 instanceof Point)
+			compare(u1.c1, u2.c1)
+		if (u1.c2 instanceof Point)
+			compare(u1.c2, u2.c2)
+	}
+	let ax=0,ay=0,axc=0,ayc=0
+	for (let [,p] of scales) {
+		if (!isNaN(p.x))
+			ax += p.x, axc++
+		if (!isNaN(p.y))
+			ay += p.y, ayc++
+	}
+	return [ax/axc, ay/ayc]
+}
+
+let ps = []
 xml = xml.replace(/<path +([^>]*? )?d="([^">]*)" ?([^>]*)>/g, (m,b="",d,a)=>{
 	let cc = parse(d)
 	//let s = unparse(cc)
@@ -512,15 +586,25 @@ xml = xml.replace(/<path +([^>]*? )?d="([^">]*)" ?([^>]*)>/g, (m,b="",d,a)=>{
 	for (let c of cc) {
 		
 		//pick_good_start(c)
+		//console.log(c)
 		if (find_top(c) < 0)
 			rev1(c)
 		or(c)
+		
+		//rotate(c, -4)
+		
 		//check(c)
 		out += '<path '+b+"d=\""+unparse_rel([c]) + "\" " + a + ">"
 		//out += to_rrect(c)+" "+a+">"
 	}
+	ps.push(...cc)
+	
 	return out//out+" "+a
 })
+
+//console.warn(ps[0])
+console.log(findscale(ps[0], ps[1]))
+
 process.stdout.write(xml+"\n")//*/
 //let s = unparse_rel(cc)
 //console.log(s)
