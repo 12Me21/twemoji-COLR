@@ -2,8 +2,8 @@ function fmt(num) {
 	return String(num/1e5)//.replace(/^[^-]/,'+$&')).join("")
 }
 function pnum(ns) {
-	let n = Number(ns+"e+5")
-	if (isNaN(n))
+	let n = Number(ns+"e5")
+	if (n != (n|0)) //if (isNaN(n))
 		throw new Error('invalid number: '+ns)
 	return n
 }
@@ -33,6 +33,10 @@ class Point {
 	static Parse(x, y, pos) {
 		return new this(pos.x+pnum(x), pos.y+pnum(y))
 	}
+	transform(matrix) {
+		this.x = matrix.xx*this.x + matrix.yx*this.y + matrix.x
+		this.y = matrix.yy*this.y + matrix.xy*this.x + matrix.y
+	}
 }
 
 class Seg {
@@ -41,6 +45,8 @@ class Seg {
 }
 
 class SegL extends Seg {
+	transform(matrix) {
+	}
 }
 SegL.prototype.letter = "l"
 
@@ -72,6 +78,10 @@ class SegC extends Seg {
 		let c2 = Point.Parse(args[1], args[2], pos)
 		return new this(c1, c2)
 	}
+	transform(matrix) {
+		this.c1.transform(matrix)
+		this.c2.transform(matrix)
+	}
 }
 SegC.prototype.letter = "c"
 
@@ -93,6 +103,9 @@ class SegQ extends Seg {
 		else
 			c = ppos.Copy()
 		return new this(c)
+	}
+	transform(matrix) {
+		this.c.transform(matrix)
 	}
 }
 SegQ.prototype.letter = "q"
@@ -154,8 +167,11 @@ function parse(str) {
 		if (contour) {
 			if (pos.x==start.x && pos.y==start.y)
 				contour.pop()
-			else
+			else {
+				if (dist(pos,start) < 0.01e5)
+					console.warn('path end misalign?', start.Subtract(pos).fmt())
 				contour.push(new SegL())
+			}
 			//contour.push(['M']) // gap (unclosed contour)
 			contours.push(contour)
 			contour = null
@@ -179,6 +195,7 @@ function parse(str) {
 		}
 		
 		if (cmd=='Z') {
+			
 			autoclose()
 			pos = start.Copy()
 			continue
@@ -204,6 +221,7 @@ function parse(str) {
 				autoclose()
 				contour = []
 				start = next.Copy()
+				cmd="L"
 			} else if (cmd=='H'||cmd=='V'||cmd=='L') {
 				contour.push(new SegL())
 			} else if (cmd=='A') {
@@ -251,7 +269,7 @@ function to_rrect(c) {
 			// found corner
 			if (1 || Math.abs(Math.abs(d.x)-Math.abs(d.y)) <= 1000) {
 				rads.push(new Point(Math.abs(d.x),Math.abs(d.y)))
-				console.warn("corner", d)
+				//console.warn("corner", d)
 				if (d.x < 0) {
 					if (d.y < 0) {
 						corners.bottomleft = new Point(p2.x,p1.y)
@@ -276,20 +294,24 @@ function to_rrect(c) {
 	}
 	rx /= rads.length
 	ry /= rads.length
+	let rr = new Point(rx,ry)
 	for (let r of rads) {
-		if (dist([rx,ry], r) >= 400)
+		if (dist(rr, r) >= 400)
 			throw new Error('bad corners')
 	}
 	let x = corners.topleft.x
 	let y = corners.topleft.y
 	let w = corners.bottomright.x - x
 	let h = corners.bottomright.y - y
-	console.warn("corners", corners, rads)
+	//console.warn("corners", corners, rads)
 	if (corners.topleft.x != corners.bottomleft.x || corners.topright.x != corners.bottomright.x || corners.topleft.y != corners.topright.y || corners.bottomleft.y != corners.bottomright.y) {
 		throw new Error('not rectangle')
 	}
-	if (rx*2 == w && ry*2 == h)
+	if (rx*2 == w && ry*2 == h) {
+		if (w==h)
+			return `<circle cx="${fmt(x+w/2)}" cy="${fmt(y+h/2)}" r="${fmt((w+h)/4)}"`
 		return `<ellipse cx="${fmt(x+w/2)}" cy="${fmt(y+h/2)}" rx="${fmt(w/2)}" ry="${fmt(h/2)}"`
+	}
 	if (rx==ry)
 		return `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt(w)}" height="${fmt(h)}" rx="${fmt((rx+ry)/2)}"`
 	else
@@ -363,6 +385,12 @@ function half_arc_at(c, i) {
 	}
 }
 
+function transform(c, matrix) {
+	for (let x of c) {
+		x.transform(matrix)
+	}
+}
+
 function unparse_rel(contours) {
 	let out = ""
 	for (let c of contours) {
@@ -388,7 +416,11 @@ function unparse_rel(contours) {
 					let ex = pp.x - dx - pc.c2.x
 					let ey = pp.y - dy - pc.c2.y
 					// todo: we should average the err between the prev and nex controlpoints
-					console.warn('S try', ex, ey)
+					//console.warn("S try. current point:", pp, "prev command:", pc, "command:", seg)
+					
+					if (ex*ex + ey*ey <= 100*100 *3) {
+						//console.warn('S try', ex,ey)
+					}
 					if (ex*ex + ey*ey <= 100*100 *0) {
 						//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
 						short = true
@@ -421,9 +453,9 @@ function unparse_rel(contours) {
 			let pos = get(c, i+1)
 			if (seg instanceof SegL) {
 				if (prev && pos.x==prev.x)
-					out += "v " + fmt(pos.y-prev.y) + " "
+					out += "v" + fmt(pos.y-prev.y) + " "
 				else if (prev && pos.y==prev.y)
-					out += "h " + fmt(pos.x-prev.x) + " "
+					out += "h" + fmt(pos.x-prev.x) + " "
 				else {
 					out += "l " + pos.fmt(prev) + " "
 				}
@@ -450,27 +482,41 @@ function unparse_rel(contours) {
 	return out
 }
 
-function unparse(contours) {
+function unparse_abs(contours) {
 	let out = ""
 	for (let c of contours) {
-		out += "M "+c[0]+" "
+		//console.warn('m', c.length)
+		let prev = c[0]
+		out += "M "+prev.fmt()+" "
 		for (let i=1; i<c.length; i+=2) {
-			let [cmd, ...args] = c[i]
-			if (cmd=='L' && i==c.length-1) {
+			let seg = c[i]
+			//let [cmd, ...args] = c[i]
+			/*if (cmd=='L' && i==c.length-1) {
 				out += "Z"
 				break
-			}
+				}*/
+			if (seg instanceof SegC)
+				out += "C "+seg.c1.fmt()+" "+seg.c2.fmt()
+			else if (seg instanceof SegQ)
+				out += "Q "+seg.c.fmt()
+			else if (seg instanceof SegL)
+				out += "L"
+			else if (seg instanceof SegA)
+				out += "A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
 			let pos = get(c, i+1)
-			out += cmd + " "
-			out += args + " "
-			out += pos + " "
+			out += " "+pos.fmt()
+			prev = pos
 		}
+		out += "Z"
 	}
 	return out
 }
 
+
+
 function orientation(a, b, c) {
-	return (a.x*b.y + b.x*c.y + c.x*a.y) - (a.y*b.x + b.y*c.x + c.y*a.x)
+	return ((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x))/1e5
+	//return (a.x*b.y + b.x*c.y + c.x*a.y) - (a.y*b.x + b.y*c.x + c.y*a.x)
 }
 
 // nnhh this is supposed to make it so that we don't interrupt smooth (missing out on the chance for a 's' command but nnh..
@@ -485,17 +531,28 @@ function pick_good_start(c) {
 	}
 }
 
-function find_top(seg) {
+function find_top(con) {
 	let best
-	for (let i=0; i<seg.length; i+=2) {
-		if (!best || seg[i].y > seg[best].y)
+	for (let i=0; i<con.length; i+=2) {
+		if (!best || con[i].y > con[best].y)
 			best = i
 	}
-	let a = get(seg, best-2)
-	let b = get(seg, best)
-	let c = get(seg, best+2)
+	let a = get(con, best-2)
+	let b = get(con, best)
+	let c = get(con, best+2)
+	
+	let seg0 = get(con, best-1)
+	let seg1 = get(con, best+1)
+	
+	if (seg0 instanceof SegC) {
+//		a = seg0.c2
+	}
+	if (seg1 instanceof SegC) {
+//		c = seg1.c1
+	}
+	//console.warn(a,b,c)
 	let o = orientation(a,b,c)
-	console.warn('top orientation', o)
+	//console.warn('top orientation', o)
 	return o
 }
 
@@ -509,8 +566,6 @@ function or(seg) {
 		//console.warn(o)
 	}
 }
-
-let xml = process.argv[2]
 
 /*let cc= parse(xml)
 for (let c of cc) {
@@ -543,9 +598,9 @@ function findscale(c1, c2) {
 	let scales = []
 	function compare(p1, p2) {
 		let x2 = (p2.x)
-		let x1 = (p1.x-19e5)
+		let x1 = (p1.x)
 		let y2 = (p2.y)
-		let y1 = (p1.y-24e5)
+		let y1 = (p1.y)
 		let size = Math.hypot(x1,x2)
 		//if (size > 1000000)
 		scales.push([size, new Point(x2/x1,y2/y1)])
@@ -573,39 +628,109 @@ function findscale(c1, c2) {
 	return [ax/axc, ay/ayc]
 }
 
-let ps = []
+function rotate_until(c, fn) {
+	for (let i=0; i<c.length; i+=2) {
+		if (fn(c))
+			return true
+		rotate(c, 2)
+	}
+	console.warn("couldn't choose starting point")
+}
+
+
+let xml
+xml = process.argv[2]
 xml = xml.replace(/<path +([^>]*? )?d="([^">]*)" ?([^>]*)>/g, (m,b="",d,a)=>{
 	let cc = parse(d)
 	//let s = unparse(cc)
 	//console.warn(cc)
 	
 	let out = ""
-	console.warn('hey?')
+	//console.warn('hey?')
 	
 	//rev1(cc[0])
 	for (let c of cc) {
+		//console.warn(c.length)
+		
 		
 		//pick_good_start(c)
 		//console.log(c)
-		if (find_top(c) < 0)
+		if (find_top(c) < 0) {
+			//console.warn('COUNTER COCK WISE')
 			rev1(c)
+		}
 		or(c)
 		
-		//rotate(c, -4)
+		/*
+		for (let i=0;i<c.length;i+=2) {
+			if (get(c,i-1) instanceof SegL && get(c,i+1) instanceof SegL) {
+				let det = orientation(get(c, i-2), get(c, i), get(c, i+2))
+				console.warn('det ', det)
+				if (Math.abs(det) < 2000) {
+					c.splice(i, 2)
+					i-=2
+				}
+			}
+		}*/
 		
+		//console.log('rotate!')
+		//rotate(c, 2*-1)
+
+		/*let best, bestscore, besty=0
+		for (let i=0; i<c.length; i+=2) {
+			let {x,y} = c[i]
+			let score
+			if (x==18e5)
+				score = -Infinity
+			else
+				score = Math.min(Math.abs(x-Math.round(x/0.25e5)*0.25e5), Math.abs(y-Math.round(y/0.25e5)*0.25e5))
+			console.log(c[i], score)
+			if (best==undefined || score < bestscore || (y>besty && score == bestscore)) {
+				best = i, bestscore = score, besty = y
+			}
+		}
+		best /= 2
+		console.warn('ROTATED, ', best)
+		rotate(c, -best*2)
+		//*/
+		/*rotate_until(c, c=>{
+			let p0 = get(c,0)
+			return Math.abs(p0.x-18e5) <= 0.001e5//0.01e5
+		})*/
+		//console.warn(c)
+		//rotate(c, -1*2)
+		0 && console.log(c.map(x=>{
+			if (x instanceof Point)
+				return x.fmt()
+			return x
+		}))
 		//check(c)
-		out += '<path '+b+"d=\""+unparse_rel([c]) + "\" " + a + ">"
-		//out += to_rrect(c)+" "+a+">"
+		//round(c)
+		
+		0 && transform(c, {
+			xx: 1,
+			yy: 1,
+			xy: 0,
+			yx: 0,
+			x: -18.041e5,
+			y: -12.169e5,
+		})
+		
+		try {
+			//out += to_rrect(c)+" "+b+a+">"
+		} catch (e) {
+			
+		}
+		out += "<path d=\""+unparse_rel([c]) + "\" " + b + a + ">"	
 	}
-	ps.push(...cc)
 	
 	return out//out+" "+a
 })
 
 //console.warn(ps[0])
-console.log(findscale(ps[0], ps[1]))
+//console.log(findscale(ps[0], ps[1]))
 
-process.stdout.write(xml+"\n")//*/
+process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")//*/
 //let s = unparse_rel(cc)
 //console.log(s)
 // todo: check if console.log is slowing down startup
