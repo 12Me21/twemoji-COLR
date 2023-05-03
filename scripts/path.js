@@ -1,11 +1,37 @@
+// todo: does SVG allow doing e.g. "M 10 10 m 2,-2" as equivalent to M 12,8 ?  (i know it /works/ but like.. )
+
 function fmt(num) {
-	return String(num/1e5)//.replace(/^[^-]/,'+$&')).join("")
+	return String(+(num/1e5).toFixed(5))//.replace(/^[^-]/,'+$&')).join("")
 }
 function pnum(ns) {
 	let n = Number(ns+"e5")
 	if (n != (n|0)) //if (isNaN(n))
 		throw new Error('invalid number: '+ns)
 	return n
+}
+
+function round(x) {
+	return Math.round(x/100)*100
+}
+
+function rotation_matrix(a) {
+	let cos, sin
+	if (a==45) {
+		cos = sin = Math.SQRT1_2
+	} else if (a==-45) {
+		cos = Math.SQRT1_2
+		sin = -cos
+	} else {
+		let r = Math.PI*2*a/360
+		console.log(a,r)
+		cos = Math.cos(r)
+		sin = Math.sin(r)
+	}
+	return {
+		xx: cos,	yy: cos,
+		yx: -sin, xy: sin,
+		x: 0, y: 0,
+	}
 }
 
 class Point {
@@ -24,6 +50,12 @@ class Point {
 	Add(p) {
 		return new Point(this.x+p.x, this.y+p.y)
 	}
+	Divide(s) {
+		return new Point(this.x/s, this.y/s)
+	}
+	Middle(p) {
+		return new Point((this.x+p.x)/2, (this.y+p.y)/2)
+	}
 	Subtract(p) {
 		return new Point(this.x-p.x, this.y-p.y)
 	}
@@ -34,10 +66,20 @@ class Point {
 		return new this(pos.x+pnum(x), pos.y+pnum(y))
 	}
 	transform(matrix) {
-		this.x = matrix.xx*this.x + matrix.yx*this.y + matrix.x
-		this.y = matrix.yy*this.y + matrix.xy*this.x + matrix.y
+		let x = this.x
+		this.x = matrix.xx*x + matrix.yx*this.y + matrix.x
+		this.y = matrix.yy*this.y + matrix.xy*x + matrix.y
+	}
+	round() {
+		this.x = round(this.x)
+		this.y = round(this.y)
+	}
+	equal(p) {
+		return this.x==p.x && this.y==p.y
 	}
 }
+
+// todo: contour class, has flag for if it's a hole
 
 class Seg {
 	reverse() {
@@ -47,8 +89,15 @@ class Seg {
 class SegL extends Seg {
 	transform(matrix) {
 	}
+	round() {
+	}
 }
 SegL.prototype.letter = "l"
+
+class SegGap extends Seg {
+	transform(matrix) {
+	}
+}
 
 class SegC extends Seg {
 	constructor(c1, c2) {
@@ -82,6 +131,10 @@ class SegC extends Seg {
 		this.c1.transform(matrix)
 		this.c2.transform(matrix)
 	}
+	round() {
+		this.c1.round()
+		this.c2.round()
+	}
 }
 SegC.prototype.letter = "c"
 
@@ -107,6 +160,9 @@ class SegQ extends Seg {
 	transform(matrix) {
 		this.c.transform(matrix)
 	}
+	round() {
+		this.c.round()
+	}
 }
 SegQ.prototype.letter = "q"
 
@@ -121,6 +177,7 @@ class SegA extends Seg {
 	reverse() {
 		this.sweep = !this.sweep
 	}
+	// todo: transform??
 }
 SegA.prototype.letter = "a"
 
@@ -168,12 +225,16 @@ function parse(str) {
 			if (pos.x==start.x && pos.y==start.y)
 				contour.pop()
 			else {
-				if (dist(pos,start) < 0.01e5)
-					console.warn('path end misalign?', start.Subtract(pos).fmt())
+				//if (dist(pos,start) < 0.01e5)
+				console.warn('path end misalign?', start.Subtract(pos).fmt())
 				contour.push(new SegL())
 			}
 			//contour.push(['M']) // gap (unclosed contour)
-			contours.push(contour)
+			if (contour.length) { // filter out e.g. d="M 11,14 Z"
+				contours.push(contour)
+			} else {
+				console.warn('null contour in:', str)
+			}
 			contour = null
 		}
 	}
@@ -318,39 +379,66 @@ function to_rrect(c) {
 		return `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt(w)}" height="${fmt(h)}" rx="${fmt(rx)}" ry="${fmt(ry)}"`
 }
 
-function next(c, i) {
-	return c[(i+1) % c.length]
+function solve_rrect_stroke(c) {
+	for (let i=1; i<c.length; i+=2) {
+		let seg = get(c,i)
+		if (seg instanceof SegL) {
+			let i2 = i+3*2
+			let seg2 = get(c,i2)
+			if (!(seg2 instanceof SegL)) // try +4 in case we have an extra
+				seg2 = get(c,i2 += 2)
+			if (seg2 instanceof SegL) {
+				console.warn('line',get(c, i-1),get(c, i-1))
+				let a = get(c, i-1)
+				let b = get(c,i2+1)
+				let e1 = a.Middle(b)
+				let d1 = dist(a,b)
+				a = get(c, i+1)
+				b = get(c,i2-1)
+				let e2 = a.Middle(b)
+				let d2 = dist(a,b)
+				return [e1, e2, d1,d2]
+			}
+		}
+	}
+	return null
 }
 
 function check(c) {
 	for (let i=1; i<c.length; i+=2) {
 		let seg = c
 		let pp = c[i-1]
-		let np = next(c, i)
+		let np = get(c, i+1)
 		if (seg instanceof SegC) {
-			let [,x1,y1,x2,y2] = cmd
-			let o1 = orientation(pp,[x1,y1],np)
-			let o2 = orientation(pp,[x2,y2],np)
+			let o1 = orientation(pp,seg.c1,np)
+			let o2 = orientation(pp,seg.c2,np)
 			if (o1==0 && o2==0)
 				console.warn('degenerate cubic bezier')
 		}
 		if (seg instanceof SegQ) {
-			let [,x1,y1] = cmd
-			let o1 = orientation(pp,[x1,y1],np)
+			let o1 = orientation(pp,seg.c,np)
 			if (o1==0)
 				console.warn('degenerate quadratic bezier')
 		}
 		if (pp.x==np.x && pp.y==np.y) {
 			console.warn('consecutive coincident points around '+seg)
-		} else if (seg instanceof SegL && next(c, i+1) instanceof SegL) {
-			let np2 = next(c, i+2)
+		} else if (seg instanceof SegL && get(c, i+2) instanceof SegL) {
+			let np2 = get(c, i+3)
 			let o1 = orientation(pp,np,np2)
 			if (o1==0)
 				console.warn('consecutive collinear line segments')
 		}
 		
-		if (half_arc_at(c, i-1))
+		if (half_arc_at(c, i-1)) {
+			if (i==1) {
+				rotate(c, 2)
+				i += 2
+			}
 			;
+			let diameter = dist(get(c,i-3), np)
+			c.splice(i-2, 3, new SegA(new Point(diameter/2, diameter/2), 0, 0, 1))
+			i -= 2
+		}
 	}
 }
 
@@ -364,31 +452,43 @@ function dist(p1, p2) {
 }
 
 function half_arc_at(c, i) {
+	let seg0 = get(c, i-1)
+	let seg1 = get(c, i+1)
+	
+	if (!(seg0 instanceof SegC && seg1 instanceof SegC))
+		return
+	
 	let p0 = get(c, i-2)
 	let p1 = get(c, i)
 	let p2 = get(c, i+2)
-	let d1 = [p0.x-p1.x,p0.y-p1.y]
-	let d2 = [p2.x-p1.x,p2.y-p1.y]
+	let d1 = new Point(p0.x-p1.x,p0.y-p1.y)
+	let d2 = new Point(p2.x-p1.x,p2.y-p1.y)
 	// eg: d1 is [68,235], d2 is [235,-70] or [-235,70]
 	// ideal distance 2's
-	let id2a = [d1.y,-d1.x]
-	let id2b = [-d1.y,d1.x]
+	let id2a = new Point(d1.y,-d1.x)
+	let id2b = new Point(-d1.y,d1.x)
 	//console.log(p0,p1,p2,d1, d2,'|',id2a,id2b)
 	let ea = dist(id2a,d2)
 	if (ea < 10000) {
-		console.warn('half arc?', ea, dist(p0, p2))
+		console.warn('half arc?', i, ea, dist(p0, p2))
+		return true
 	} else {
 		let eb = dist(id2a,d2)
 		if (eb < 10000) {
-			console.warn('half arc?', eb, dist(p0, p2))
+			console.warn('half arc?', i, eb, dist(p0, p2))
+			return true
 		}
 	}
 }
 
 function transform(c, matrix) {
-	for (let x of c) {
+	for (let x of c)
 		x.transform(matrix)
-	}
+}
+
+function round_contour(c, matrix) {
+	for (let x of c)
+		x.round()
 }
 
 function unparse_rel(contours) {
@@ -418,11 +518,12 @@ function unparse_rel(contours) {
 					// todo: we should average the err between the prev and nex controlpoints
 					//console.warn("S try. current point:", pp, "prev command:", pc, "command:", seg)
 					
-					if (ex*ex + ey*ey <= 100*100 *3) {
-						//console.warn('S try', ex,ey)
-					}
-					if (ex*ex + ey*ey <= 100*100 *0) {
+					//if (ex*ex + ey*ey <= 100*100 *1000) {
+						console.warn('S try', ex,ey)
+					//}
+					if (ex*ex + ey*ey <= 0.001e5*0.001e5 *0) {
 						//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
+						//console.warn('S try', ex,ey)
 						short = true
 					}
 				} else {
@@ -487,7 +588,7 @@ function unparse_abs(contours) {
 	for (let c of contours) {
 		//console.warn('m', c.length)
 		let prev = c[0]
-		out += "M "+prev.fmt()+" "
+		out += "M "+prev.fmt()
 		for (let i=1; i<c.length; i+=2) {
 			let seg = c[i]
 			//let [cmd, ...args] = c[i]
@@ -496,18 +597,18 @@ function unparse_abs(contours) {
 				break
 				}*/
 			if (seg instanceof SegC)
-				out += "C "+seg.c1.fmt()+" "+seg.c2.fmt()
+				out += " C "+seg.c1.fmt()+" "+seg.c2.fmt()
 			else if (seg instanceof SegQ)
-				out += "Q "+seg.c.fmt()
+				out += " Q "+seg.c.fmt()
 			else if (seg instanceof SegL)
-				out += "L"
+				out += " L"
 			else if (seg instanceof SegA)
-				out += "A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
+				out += " A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
 			let pos = get(c, i+1)
 			out += " "+pos.fmt()
 			prev = pos
 		}
-		out += "Z"
+		out += " Z"
 	}
 	return out
 }
@@ -537,22 +638,27 @@ function find_top(con) {
 		if (!best || con[i].y > con[best].y)
 			best = i
 	}
+	//rotate(con, -best)
+	//best -= best
+	
 	let a = get(con, best-2)
 	let b = get(con, best)
 	let c = get(con, best+2)
 	
-	let seg0 = get(con, best-1)
-	let seg1 = get(con, best+1)
-	
-	if (seg0 instanceof SegC) {
-//		a = seg0.c2
-	}
-	if (seg1 instanceof SegC) {
-//		c = seg1.c1
+	if (a==c) {
+		console.warn("bad angle!")
+		let seg0 = get(con, best-1)
+		let seg1 = get(con, best+1)
+		if (seg0 instanceof SegC && !seg0.c2.equal(b)) {
+			a = seg0.c2
+		}
+		if (seg1 instanceof SegC && !seg1.c1.equal(b)) {
+			c = seg1.c1
+		}
 	}
 	//console.warn(a,b,c)
 	let o = orientation(a,b,c)
-	//console.warn('top orientation', o)
+	console.warn('top orientation', o)
 	return o
 }
 
@@ -566,16 +672,6 @@ function or(seg) {
 		//console.warn(o)
 	}
 }
-
-/*let cc= parse(xml)
-for (let c of cc) {
-	if (find_top(c) < 0) {
-		console.warn('counter-clockwise')
-		//rev1(c)
-	} else
-		console.warn('clockwise')
-}
-console.log(unparse_rel(cc))*/
 
 function rotate(list, amount) {
 	amount %= list.length
@@ -636,46 +732,69 @@ function rotate_until(c, fn) {
 	}
 	console.warn("couldn't choose starting point")
 }
+/* SunriseOverMountains, FaceWithHeadBandage */
+function merge_lines(c) {
+	for (let i=0;i<c.length;i+=2) {
+		if (get(c,i-1) instanceof SegL && get(c,i+1) instanceof SegL) {
+			let det = orientation(get(c, i-2), get(c, i), get(c, i+2))
+			console.warn('det ', det)
+			if (Math.abs(det) < 100000) {
+				c.splice(i, 2)
+				i-=2
+			}
+		}
+	}
+}
 
+function replace_corner_arcs(c) {
+	for (let i=1; i<c.length; i++) {
+		let seg = c[i]
+		if (seg instanceof SegC) {
+			let p1 = get(c,i-1)
+			let p2 = get(c,i+1)
+			let d = p2.Subtract(p1)
+			let c1d = seg.c1.Subtract(p1)
+			let c2d = seg.c2.Subtract(p2)
+			let f1,f2
+			if (c1d.x==0 && c2d.y==0) {
+				f1 = c1d.y / d.y
+				f2 = -c2d.x / d.x
+			} else if (c1d.y==0 && c2d.x==0) {
+				f1 = c1d.x / d.x
+				f2 = -c2d.y / d.y
+			} else {
+				continue
+			}
+			let err = Math.hypot(f1-0.5523, f2-0.5523)
+			if (err > 0.005)
+				continue
+			console.log('corner?', err)
+			c[i] = new SegA(new Point(Math.abs(d.x), Math.abs(d.y)), 0, false, true) // todo: correct sweep
+		}
+	}
+}
 
 let xml
+let first = true
 xml = process.argv[2]
-xml = xml.replace(/<path +([^>]*? )?d="([^">]*)" ?([^>]*)>/g, (m,b="",d,a)=>{
+xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>{
 	let cc = parse(d)
-	//let s = unparse(cc)
-	//console.warn(cc)
-	
 	let out = ""
-	//console.warn('hey?')
+	//let color = m.match(' fill="(#[^"]+)"')
+	console.warn('heck?')
 	
 	//rev1(cc[0])
 	for (let c of cc) {
-		//console.warn(c.length)
+		console.warn(c.length)
 		
-		
-		//pick_good_start(c)
-		//console.log(c)
-		if (find_top(c) < 0) {
-			//console.warn('COUNTER COCK WISE')
-			rev1(c)
+		if (first ? (find_top(c) < 0) : (find_top(c) > 0)) {
+			console.warn('COUNTER CLOCK WISE')
+			//rev1(c)
 		}
 		or(c)
+		//
 		
-		/*
-		for (let i=0;i<c.length;i+=2) {
-			if (get(c,i-1) instanceof SegL && get(c,i+1) instanceof SegL) {
-				let det = orientation(get(c, i-2), get(c, i), get(c, i+2))
-				console.warn('det ', det)
-				if (Math.abs(det) < 2000) {
-					c.splice(i, 2)
-					i-=2
-				}
-			}
-		}*/
 		
-		//console.log('rotate!')
-		//rotate(c, 2*-1)
-
 		/*let best, bestscore, besty=0
 		for (let i=0; i<c.length; i+=2) {
 			let {x,y} = c[i]
@@ -693,51 +812,139 @@ xml = xml.replace(/<path +([^>]*? )?d="([^">]*)" ?([^>]*)>/g, (m,b="",d,a)=>{
 		console.warn('ROTATED, ', best)
 		rotate(c, -best*2)
 		//*/
-		/*rotate_until(c, c=>{
-			let p0 = get(c,0)
-			return Math.abs(p0.x-18e5) <= 0.001e5//0.01e5
-		})*/
-		//console.warn(c)
-		//rotate(c, -1*2)
-		0 && console.log(c.map(x=>{
-			if (x instanceof Point)
-				return x.fmt()
-			return x
-		}))
-		//check(c)
-		//round(c)
 		
-		0 && transform(c, {
-			xx: 1,
-			yy: 1,
-			xy: 0,
+		/*let matrix = {
+			xx: 1/100,
+			yy: 1/100,
 			yx: 0,
-			x: -18.041e5,
-			y: -12.169e5,
-		})
+			xy: 0,
+			x: 0,
+			y: 36e5,
+			}*/
+		/*
+		let matrix = rotation_matrix(45)
+		transform(c, {xx:1,yy:1,xy:0,yx:0,x:-2.468e5,y:-2.468e5})
+		transform(c, matrix)
+		//*/
+		//transform(c, {xx:2/1.912/1.633*1.5,yy:2/2.274/1.633*1.5,xy:0,yx:0,x:0,y:0})
+		//merge_lines(c)
 		
-		try {
-			//out += to_rrect(c)+" "+b+a+">"
-		} catch (e) {
+		/*
+		  used for Hedgehog
+		  replace small arc-like segments with arcs (radius 0.5)
+		for (let i=0; i<c.length; i+=2) {
+			let s1 = get(c,i-1)
+			let s2 = get(c,i+1)
 			
+			if (s1 instanceof SegC && s2 instanceof SegC) {
+				let p1 = get(c,i-2)
+				let p2 = get(c,i+2)
+				if (dist(p1,p2) < 1e5) {
+					c.splice(i-1,3,new SegA(new Point(0.5e5,0.5e5), 0, 0, true))
+					i -= 2
+				}
+			}
 		}
-		out += "<path d=\""+unparse_rel([c]) + "\" " + b + a + ">"	
+		*/
+		
+		/*
+		let avg = new Point(0,0)
+		
+		for (let i=0; i<c.length; i+=2) {
+			avg = avg.Add(c[i])
+		}
+		avg = avg.Divide(c.length/2)
+		
+		let rads = []
+		let aang=0
+		for (let i=0; i<4; i+=2) {
+			let p1 = c[i]
+			let p2 = get(c, i+4)
+			let d = p2.Subtract(p1)
+			let ang = Math.atan2(d.x, d.y)*360/(Math.PI*2)
+			if (i>0) {
+				ang += 90
+			}
+			ang += 360
+			ang %= 180
+			if (ang > 90)
+				ang = ang - 180
+			let diam = Math.hypot(d.x, d.y)
+			rads.push(diam/2)
+			aang += ang
+			//console.log('angle, diameter', ang, diam)
+		}
+		aang /= 2
+		console.log(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"  fill="#292F33"/>`)
+		//*/
+		
+		/*{
+			let best = null
+			for (let i=0; i<c.length; i+=2) {
+				if (!best || c[i].y > c[best].y)
+					best = i
+			}
+			c.splice(best, 2)
+		}*/
+		
+		/*
+		{
+			let rad = 1e5
+			let rr = false
+			for (let i=1; i<c.length; i+=2) {
+				let seg = get(c,i)
+				let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*3
+				if (short) {
+					console.warn('spliced arc', rr)
+					if (!rr) {
+						c[i] = new SegL()//SegA(new Point(rad, rad), 0, false, true)
+						rr = true
+					} else {
+						c.splice(i-1, 2)
+						i-=2
+					}
+				} else {
+					rr = false
+				}
+			}
+		}//*/
+		
+		/* let's
+		let s = solve_rrect_stroke(c)
+		if (s) {
+			let d = (s[2]+s[3])/2
+			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke=""/>`)
+		}//*/
+		
+		//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
+		
+		//rotate(c, 2*-2); console.log('rotate!')
+		//c.splice(0,2)
+		//check(c)
+		
+		//pick_good_start(c)
+		//replace_corner_arcs(c)
+		//round_contour(c)
+		let ok
+		try {
+			//let d = to_rrect(c)
+			//out += `${d}${b}${a}>`
+			//ok = true
+			//console.warn('! ', d)
+		} catch (e) {
+		}
+		if (!ok) {
+			let d = unparse_abs([c])
+			out += `<path d="${d}"${b} ${a}>`
+		}
+		first = !1//first
 	}
 	
-	return out//out+" "+a
+	
+	return out
 })
 
-//console.warn(ps[0])
-//console.log(findscale(ps[0], ps[1]))
+//[0-9]+\.999[0-9]+
 
-process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")//*/
-//let s = unparse_rel(cc)
-//console.log(s)
-// todo: check if console.log is slowing down startup
-//
-//M20.896,18.375 c0.318,1.396,2.009,4.729 2.009,4.729 c0,0,-1.639,1.477 -2.987,1.437 l-1.955,-2.841 l-1.735,2.446 c0,0,-1.713,-1.274 -2.931,-1.485 c0,0,1.666,-3.182 2.023,-3.856 c0.357,-0.674,1.057,-1.547 1.057,-1.547 c0,0,4.271,0.028 4.519,1.117 Z
-
-//M100 100 L 200 200 500 500 500 500 L 600 50 z - warnings
-/*
-test s command generation:
-M12.45 21.329s-2.459 4.086-1.78 5.652c.409.945 1.123 2.064 2.389 2.271.423.069.623.898.501 1.505-.139.686-.621 1.646-.886 2.132-.265.487-.777.481-1.411 1.041-.442.39-.597 1.075.153 1.082l3.545.029c.664.006 1.093-.398 1.24-1.067.204-.928.76-4.461.551-5.146-.15-.491-.667-.886-.995-1.835-.243-.703.343-1.803.343-1.803l-3.65-3.861zm-5.748-5.571s.824-.146 1.272-.061c.448.086 1.705 1.019 2.085 1.16.38.141 1.299-.075 1.299-.075s1.065 1.436.995 1.581c-.07.145-1.617.47-1.981.579-.363.109-1.755-2.081-2.146-2.327s-.98.359-1.373.341c-.392-.018-.282-.298-.005-.374 0 0-.467.157-.483-.019-.016-.176.388-.281.388-.281s-.409.146-.475-.026c-.064-.172.063-.38.424-.498z **/
+//process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")
+process.stdout.write(xml.replace(/Z"[^]*? d="/g, "Z ")+"\n")
