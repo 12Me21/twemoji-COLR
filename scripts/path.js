@@ -1,7 +1,10 @@
 // todo: does SVG allow doing e.g. "M 10 10 m 2,-2" as equivalent to M 12,8 ?  (i know it /works/ but like.. )
 
+// idea: some kind of base "Geometry" class that Point and Seg and Contour inherit from, (or perhaps just an 'interface', to define like, .transform() and .interpolate etc.)
+
 function fmt(num) {
-	return String(+(num/1e5).toFixed(5))//.replace(/^[^-]/,'+$&')).join("")
+	//return String(num/1e5)//.replace(/^[^-]/,'+$&')).join("")
+	return String(+(num/1e5).toFixed(5))
 }
 function pnum(ns) {
 	let n = Number(ns+"e5")
@@ -91,6 +94,9 @@ class SegL extends Seg {
 	}
 	round() {
 	}
+	Middle() {
+		return new SegL()
+	}
 }
 SegL.prototype.letter = "l"
 
@@ -134,6 +140,9 @@ class SegC extends Seg {
 	round() {
 		this.c1.round()
 		this.c2.round()
+	}
+	Middle(seg) {
+		return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
 	}
 }
 SegC.prototype.letter = "c"
@@ -521,7 +530,7 @@ function unparse_rel(contours) {
 					//if (ex*ex + ey*ey <= 100*100 *1000) {
 						console.warn('S try', ex,ey)
 					//}
-					if (ex*ex + ey*ey <= 0.001e5*0.001e5 *0) {
+					if (ex*ex + ey*ey <= 0.00001e5*0.00001e5 *0) {
 						//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
 						//console.warn('S try', ex,ey)
 						short = true
@@ -783,13 +792,36 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 	//let color = m.match(' fill="(#[^"]+)"')
 	console.warn('heck?')
 	
-	//rev1(cc[0])
+	/*
+
+	cc = [
+		cc[0].slice(2,7),
+		cc[0].slice(8,13),
+	]
+	cc[0].push(new SegL)
+	cc[1].push(new SegL)
+	
+	rev1(cc[0])
+	rotate(cc[0], -2)
+	console.log(cc)
+let c1 = cc[0]
+	let c2 = cc[1]
+	let c3 = []
+	for (let i=0; i<c1.length; i+=2) {
+		c3[i] = c1[i].Middle(c2[i])
+		c3[i+1] = c1[i+1].Middle(c2[i+1])
+	}
+	cc.push(c3)//*/
+	
+	
+	
+	
 	for (let c of cc) {
 		console.warn(c.length)
 		
 		if (first ? (find_top(c) < 0) : (find_top(c) > 0)) {
 			console.warn('COUNTER CLOCK WISE')
-			//rev1(c)
+			rev1(c)
 		}
 		or(c)
 		//
@@ -828,6 +860,9 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 		//*/
 		//transform(c, {xx:2/1.912/1.633*1.5,yy:2/2.274/1.633*1.5,xy:0,yx:0,x:0,y:0})
 		//merge_lines(c)
+		
+		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.5e5,y:-0.5e5})
+		//transform(c, {xx:36/35,yy:36/35,xy:0,yx:0,x:0,y:0})
 		
 		/*
 		  used for Hedgehog
@@ -889,15 +924,15 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 		
 		/*
 		{
-			let rad = 1e5
+			let rad = 0.875e5
 			let rr = false
 			for (let i=1; i<c.length; i+=2) {
 				let seg = get(c,i)
-				let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*3
+				let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*2.1
 				if (short) {
 					console.warn('spliced arc', rr)
 					if (!rr) {
-						c[i] = new SegL()//SegA(new Point(rad, rad), 0, false, true)
+						c[i] = new SegA(new Point(rad, rad), 0, false, true)
 						rr = true
 					} else {
 						c.splice(i-1, 2)
@@ -916,11 +951,15 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke=""/>`)
 		}//*/
 		
-		//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
+		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-32e5,y:-10e5})
 		
-		//rotate(c, 2*-2); console.log('rotate!')
-		//c.splice(0,2)
-		//check(c)
+		//rotate(c, 2*-1); console.log('rotate!')
+		c.splice(0,2)
+		check(c)
+		
+		//rotate_until(c, x=>x.x==15)
+		
+		//rev1(c)
 		
 		//pick_good_start(c)
 		//replace_corner_arcs(c)
@@ -934,10 +973,10 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 		} catch (e) {
 		}
 		if (!ok) {
-			let d = unparse_abs([c])
+			let d = unparse_rel([c])
 			out += `<path d="${d}"${b} ${a}>`
 		}
-		first = !1//first
+		//first = !1//first
 	}
 	
 	
@@ -946,5 +985,5 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 
 //[0-9]+\.999[0-9]+
 
-//process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")
-process.stdout.write(xml.replace(/Z"[^]*? d="/g, "Z ")+"\n")
+process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")
+//process.stdout.write(xml.replace(/Z"[^]*? d="/g, "Z ")+"\n")
