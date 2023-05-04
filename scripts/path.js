@@ -597,7 +597,7 @@ function unparse_abs(contours) {
 	for (let c of contours) {
 		//console.warn('m', c.length)
 		let prev = c[0]
-		out += "M "+prev.fmt()
+		out += " M\n"+prev.fmt()
 		for (let i=1; i<c.length; i+=2) {
 			let seg = c[i]
 			//let [cmd, ...args] = c[i]
@@ -606,18 +606,18 @@ function unparse_abs(contours) {
 				break
 				}*/
 			if (seg instanceof SegC)
-				out += " C "+seg.c1.fmt()+" "+seg.c2.fmt()
+				out += "\n C "+seg.c1.fmt()+" "+seg.c2.fmt()
 			else if (seg instanceof SegQ)
-				out += " Q "+seg.c.fmt()
+				out += "\n Q "+seg.c.fmt()
 			else if (seg instanceof SegL)
-				out += " L"
+				out += "\n L"
 			else if (seg instanceof SegA)
-				out += " A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
+				out += "\n A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
 			let pos = get(c, i+1)
-			out += " "+pos.fmt()
+			out += "\n"+pos.fmt()
 			prev = pos
 		}
-		out += " Z"
+		out += "\n Z"
 	}
 	return out
 }
@@ -804,8 +804,14 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 	rev1(cc[0])
 	rotate(cc[0], -2)
 	console.log(cc)
-let c1 = cc[0]
-	let c2 = cc[1]
+
+	let c1 = cc[0].slice(0,7)
+	let c2 = cc[0].slice(8,15)
+	c1.push(new SegL)
+	c2.push(new SegL)
+	
+	rev1(c1)
+	rotate(c1, -2)
 	let c3 = []
 	for (let i=0; i<c1.length; i+=2) {
 		c3[i] = c1[i].Middle(c2[i])
@@ -813,11 +819,10 @@ let c1 = cc[0]
 	}
 	cc.push(c3)//*/
 	
-	
-	
-	
 	for (let c of cc) {
 		console.warn(c.length)
+		
+		//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
 		
 		if (first ? (find_top(c) < 0) : (find_top(c) > 0)) {
 			console.warn('COUNTER CLOCK WISE')
@@ -861,7 +866,7 @@ let c1 = cc[0]
 		//transform(c, {xx:2/1.912/1.633*1.5,yy:2/2.274/1.633*1.5,xy:0,yx:0,x:0,y:0})
 		//merge_lines(c)
 		
-		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.5e5,y:-0.5e5})
+		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:16.7793e5,y:-21.0703e5})
 		//transform(c, {xx:36/35,yy:36/35,xy:0,yx:0,x:0,y:0})
 		
 		/*
@@ -951,11 +956,9 @@ let c1 = cc[0]
 			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke=""/>`)
 		}//*/
 		
-		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-32e5,y:-10e5})
-		
 		//rotate(c, 2*-1); console.log('rotate!')
-		c.splice(0,2)
-		check(c)
+		//c.splice(0,2)
+		//check(c)
 		
 		//rotate_until(c, x=>x.x==15)
 		
