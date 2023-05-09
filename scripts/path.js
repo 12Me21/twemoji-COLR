@@ -2,6 +2,8 @@
 
 // idea: some kind of base "Geometry" class that Point and Seg and Contour inherit from, (or perhaps just an 'interface', to define like, .transform() and .interpolate etc.)
 
+// also we can store arbitrary shapes as contours by storing them as segment types (and then the previous point determines the location
+
 function fmt(num) {
 	//return String(num/1e5)//.replace(/^[^-]/,'+$&')).join("")
 	return String(+(num/1e5).toFixed(5))
@@ -491,8 +493,9 @@ function half_arc_at(c, i) {
 }
 
 function transform(c, matrix) {
-	for (let x of c)
+	for (let x of c) {
 		x.transform(matrix)
+	}
 }
 
 function round_contour(c, matrix) {
@@ -530,9 +533,10 @@ function unparse_rel(contours) {
 					//if (ex*ex + ey*ey <= 100*100 *1000) {
 						console.warn('S try', ex,ey)
 					//}
-					if (ex*ex + ey*ey <= 0.00001e5*0.00001e5 *0) {
+					if (ex*ex + ey*ey <= 0.01e5*0.01e5) {
 						//if (pp[0]-dx == pc[3] && pp[1]-dy == pc[4]) {
 						//console.warn('S try', ex,ey)
+						
 						short = true
 					}
 				} else {
@@ -783,6 +787,27 @@ function replace_corner_arcs(c) {
 	}
 }
 
+function short_to_arcs(c, rad) {
+	let rr = false
+	for (let i=1; i<c.length; i+=2) {
+		let seg = get(c,i)
+		let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*2.1
+		if (short) {
+			console.warn('spliced arc', rr)
+			if (!rr) {
+				c[i] = new SegA(new Point(rad, rad), 0, false, true)
+				rr = true
+			} else {
+				c.splice(i-1, 2)
+				i-=2
+			}
+		} else {
+			rr = false
+		}
+	}
+}
+
+
 let xml
 let first = true
 xml = process.argv[2]
@@ -804,11 +829,30 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 	rev1(cc[0])
 	rotate(cc[0], -2)
 	console.log(cc)
+*/
 
-	let c1 = cc[0].slice(0,7)
-	let c2 = cc[0].slice(8,15)
+	/*cc[0].splice(0,2)
+	
+	let bad = get(cc[0], -1)
+	console.log(bad)
+	bad.c2 = new Point(0,0)
+	bad.c1 = new Point(0,0)*/
+	
+	rotate(cc[0], 8)
+	
+	let c1 = cc[0].slice(2,23)
+	
+	let tp = new Point(0,0)
+	let cutted = cc[0].splice(28, 3, tp)
+	console.log("SNIP",cutted)
+	cutted = cutted[0].Middle(cutted[2])
+	tp.x = cutted.x
+	tp.y = cutted.y
+	
+	let c2 = cc[0].slice(26)
 	c1.push(new SegL)
 	c2.push(new SegL)
+	console.log(c1.length, c2.length)
 	
 	rev1(c1)
 	rotate(c1, -2)
@@ -822,32 +866,17 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 	for (let c of cc) {
 		console.warn(c.length)
 		
-		//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
+		//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:0})
 		
 		if (first ? (find_top(c) < 0) : (find_top(c) > 0)) {
 			console.warn('COUNTER CLOCK WISE')
 			rev1(c)
 		}
 		or(c)
-		//
 		
-		
-		/*let best, bestscore, besty=0
-		for (let i=0; i<c.length; i+=2) {
-			let {x,y} = c[i]
-			let score
-			if (x==18e5)
-				score = -Infinity
-			else
-				score = Math.min(Math.abs(x-Math.round(x/0.25e5)*0.25e5), Math.abs(y-Math.round(y/0.25e5)*0.25e5))
-			console.log(c[i], score)
-			if (best==undefined || score < bestscore || (y>besty && score == bestscore)) {
-				best = i, bestscore = score, besty = y
-			}
-		}
-		best /= 2
-		console.warn('ROTATED, ', best)
-		rotate(c, -best*2)
+		/*let matrix = rotation_matrix(-45)
+		transform(c, {xx:1,yy:1,xy:0,yx:0,x:-25.95e5,y:-10.05e5})
+		transform(c, matrix)
 		//*/
 		
 		/*let matrix = {
@@ -867,7 +896,7 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 		//merge_lines(c)
 		
 		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:16.7793e5,y:-21.0703e5})
-		//transform(c, {xx:36/35,yy:36/35,xy:0,yx:0,x:0,y:0})
+		//transform(c, {xx:35/36*9,yy:35/36*9,xy:0,yx:0,x:0,y:0})
 		
 		/*
 		  used for Hedgehog
@@ -886,7 +915,7 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 			}
 		}
 		*/
-		
+				
 		/*
 		let avg = new Point(0,0)
 		
@@ -915,7 +944,7 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 			//console.log('angle, diameter', ang, diam)
 		}
 		aang /= 2
-		console.log(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"  fill="#292F33"/>`)
+		console.log(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"  fill="${(a.match(/fill="(.*?)"/)||["",""])[1]}"/>`)
 		//*/
 		
 		/*{
@@ -927,52 +956,60 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*)>/g, (m,b=" ",d,a)=>
 			c.splice(best, 2)
 		}*/
 		
-		/*
-		{
-			let rad = 0.875e5
-			let rr = false
-			for (let i=1; i<c.length; i+=2) {
-				let seg = get(c,i)
-				let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*2.1
-				if (short) {
-					console.warn('spliced arc', rr)
-					if (!rr) {
-						c[i] = new SegA(new Point(rad, rad), 0, false, true)
-						rr = true
-					} else {
-						c.splice(i-1, 2)
-						i-=2
-					}
-				} else {
-					rr = false
-				}
-			}
-		}//*/
+		//short_to_arcs(c, 0.375e5)
+		
+		//rotate(c, 2*-3); console.log('rotate!')
 		
 		/* let's
 		let s = solve_rrect_stroke(c)
 		if (s) {
 			let d = (s[2]+s[3])/2
-			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke=""/>`)
+			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke="${(a.match(/fill="(.*?)"/)||["",""])[1]}"/>`)
 		}//*/
 		
-		//rotate(c, 2*-1); console.log('rotate!')
+		
 		//c.splice(0,2)
 		//check(c)
 		
-		//rotate_until(c, x=>x.x==15)
+		//rotate_until(c, x=>x.x==18e5)
 		
-		//rev1(c)
+		/*let m = 34/36
+		transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:-18e5})
+		transform(c, {xx:m,yy:m,xy:0,yx:0,x:0,y:0})
+		transform(c, {xx:1,yy:1,xy:0,yx:0,x:18e5,y:18e5})*/
+		
+		rev1(c)
 		
 		//pick_good_start(c)
 		//replace_corner_arcs(c)
 		//round_contour(c)
+		
+		if (0) c = c.map(s=>{
+			if (s instanceof Point) {
+				let {x,y} = s
+				let angle = Math.atan2(y-18e5,x-18e5)
+				let dist = Math.hypot(y-18e5,x-18e5)
+				if (dist > 17.25e5)
+					dist = 18e5
+				else
+					dist = 16.5e5
+				return new Point(Math.cos(angle)*dist+18e5, Math.sin(angle)*dist+18e5)
+			}
+			if (s instanceof SegA) {
+				if (s.sweep)
+					s.radius = new Point(18e5,18e5)
+				else
+					s.radius = new Point(16.5e5,16.5e5)
+			}
+			return s
+		})
+		
 		let ok
 		try {
-			//let d = to_rrect(c)
-			//out += `${d}${b}${a}>`
-			//ok = true
-			//console.warn('! ', d)
+			/*let d = to_rrect(c)
+			out += `${d}${b}${a}>`
+			ok = true
+			console.warn('! ', d)//*/
 		} catch (e) {
 		}
 		if (!ok) {
