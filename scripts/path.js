@@ -31,7 +31,7 @@ function F([str0, ...strs], ...values) {
 
 function round(x, n) {
 	if (!n)
-		return Math.round(x)
+		return Math.round(x) // nhhh
 	return Math.round(x/n)*n
 }
 
@@ -395,8 +395,44 @@ function rev1(c) {
 }
 
 function to_rrect(c) {
-	let s
 	let corners = {}
+	
+	if (c.length==8 && c.every((x,i)=>i%2==0 || x instanceof SegL)) {
+		for (let s=0; s<c.length; s+=2) {
+			let p1 = get(c, s-2)
+			let p2 = get(c, s+2)
+			let d = new Point(p2.x-p1.x, p2.y-p1.y)
+			let nw
+			if (d.x < 0) {
+				if (d.y < 0)
+					nw = corners.bottomleft = new Point(p2.x,p1.y)
+				else
+					nw = corners.bottomright = new Point(p1.x,p2.y)
+			} else {
+				if (d.y < 0)
+					nw = corners.topleft = new Point(p1.x,p2.y)
+				else
+					nw = corners.topright = new Point(p2.x,p1.y)
+			}
+			if (!nw.equal(c[s]))
+				throw new Error('misplaced corner in normal rect')
+		}
+		if (Object.keys(corners).length!=4)
+			throw new Error('couldnt find all corners?')
+		let elem = new Element('rect')
+		let x = corners.topleft.x
+		let y = corners.topleft.y
+		let w = corners.bottomright.x - x
+		let h = corners.bottomright.y - y
+		elem.attrs.x = fmt(x)
+		elem.attrs.y = fmt(y)
+		elem.attrs.width = fmt(w)
+		elem.attrs.height = fmt(h)
+		return elem
+	}
+	
+	let s
+	
 	let rads = []
 	for (s=1; s<c.length; s+=2) {
 		if (c[s] instanceof SegC || c[s] instanceof SegA) {
@@ -444,15 +480,75 @@ function to_rrect(c) {
 	if (corners.topleft.x != corners.bottomleft.x || corners.topright.x != corners.bottomright.x || corners.topleft.y != corners.topright.y || corners.bottomleft.y != corners.bottomright.y) {
 		throw new Error('not rectangle')
 	}
+	/*if (1) {
+		let x2 = corners.bottomright.x
+		let y2 = corners.bottomright.y
+		let cx = (x+x2)/2
+		let cy = (y+y2)/2
+		let fx = round(x,0.125e5)
+		let fy = round(y,0.125e5)
+		let fx2 = round(x2,0.125e5)
+		let fy2 = round(y2,0.125e5)
+		let fx1 = round(cx,0.125e5)
+		let fy1 = round(cy,0.125e5)
+		
+		let r = (rx+ry)/2
+		
+		if (Math.abs(fx1-cx)<0.003e5) {
+			print('snapped cx ', fx1)
+			cx = fx1
+			x = cx-r
+			x2 = cx+r
+		}
+		else if (Math.abs(fx-x)<0.003e5) {
+			print('snapped left ', fx)
+			x = fx
+			x2 = x + r*2
+		}
+		else if (Math.abs(fx2-x2)<0.003e5) {
+			print('snapped right ', fx2)
+			x2 = fx2
+			x = x2 - r*2
+		}
+		if (Math.abs(fy1-cy)<0.003e5) {
+			print('snapped cy ', fy1)
+			cy = fy1
+			y = cy-r
+			y2 = cy+r
+		}
+		else if (Math.abs(fy-y)<0.003e5) {
+			print('snapped top ', fy)
+			y = fy
+			y2 = y + r*2
+		}
+		else if (Math.abs(fy2-y2)<0.003e5) {
+			print('snapped bottom ', fy2)
+			y2 = fy2
+			y = y2 - r*2
+		}
+		return F`<circle r="${r}" cx="${(x+x2)/2}" cy="${(y+y2)/2}"`
+		}*/
+	let elem
 	if (rx*2 == w && ry*2 == h) {
 		if (w==h)
-			return F`<circle cx="${x+w/2}" cy="${y+h/2}" r="${(w+h)/4}"`
-		return F`<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w/2}" ry="${h/2}"`
+			elem = new Element('circle'), elem.attrs.r = fmt((w+h)/4)
+		else
+			elem = new Element('ellipse'), elem.attrs.rx = fmt(w/2), elem.attrs.ry = fmt(h/2)
+		elem.attrs.cx = fmt(x+w/2)
+		elem.attrs.cy = fmt(y+h/2)
+		return elem
+	} else {
+		elem = new Element('rect')
+		elem.attrs.width = fmt(w)
+		elem.attrs.height = fmt(h)
+		if (rx==ry)
+			elem.attrs.rx = fmt((rx+ry)/2)
+		else
+			elem.attrs.rx = fmt(rx), elem.attrs.ry = fmt(ry)
+		elem.attrs.x = fmt(x)
+		elem.attrs.y = fmt(y)
 	}
-	if (rx==ry)
-		return F`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${(rx+ry)/2}"`
-	else
-		return F`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ry="${ry}"`
+	return elem
 }
 
 function solve_rrect_stroke(c) {
@@ -726,15 +822,25 @@ function find_top(con) {
 		console.warn("bad angle!")
 		let seg0 = get(con, best-1)
 		let seg1 = get(con, best+1)
-		if (seg0 instanceof SegC && !seg0.c2.equal(b)) {
-			a = seg0.c2
+		if (seg0 instanceof SegC) {
+			if (!seg0.c2.equal(b))
+				a = seg0.c2
+			else if (!seg0.c1.equal(b))
+				a = seg0.c1
 		}
-		if (seg1 instanceof SegC && !seg1.c1.equal(b)) {
-			c = seg1.c1
+		if (seg1 instanceof SegC) {
+			if (!seg0.c1.equal(b))
+				c = seg0.c1
+			else if (!seg0.c2.equal(b))
+				c = seg0.c2
 		}
 	}
 	//console.warn(a,b,c)
 	let o = orientation(a,b,c)
+	if (o==0) {
+		console.warn('bad angle! one last try..')
+		o = orientation(a,b,get(con, best+4))
+	}
 	return o
 }
 
@@ -801,6 +907,7 @@ function findscale(c1, c2) {
 		let y1 = (p1.y)
 		let size = Math.hypot(x1,x2)
 		//if (size > 1000000)
+		print(x2/x1,y2/y1)
 		scales.push([size, new Point(x2/x1,y2/y1)])
 	}
 	for (let i=0; i<c1.length; i++) {
@@ -880,7 +987,7 @@ function short_to_arcs(c, rad) {
 	let rr = false
 	for (let i=1; i<c.length; i+=2) {
 		let seg = get(c,i)
-		let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*2.1
+		let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*1.5//2.1
 		if (short) {
 			print('spliced arc', rr)
 			if (!rr) {
@@ -892,6 +999,11 @@ function short_to_arcs(c, rad) {
 			}
 		} else {
 			rr = false
+		}
+	}
+	if (c[1] instanceof SegA) {
+		if (get(c,-1) instanceof SegA) {
+			c.splice(0, 2)
 		}
 	}
 }
@@ -959,6 +1071,9 @@ class Root extends Element {
 		return this.childs.join("")
 	}
 }
+/*let sz = make_star(12.28e5, 16.77e5, 16)
+round_contour(sz)
+console.log(unparse_rel([sz]))*/
 
 let xml
 let first = true
@@ -966,68 +1081,172 @@ xml = process.argv[2]
 
 let output = x=>process.stdout.write(x)
 
-let REGEX = /(<!--)|(<[?])|<([/])?([-a-zA-Z0-9_]+)([^>]*?)([/])?>|</g
-let match
-let last = 0
-let comment
-let root = new Root(), current = root
-while (match = REGEX.exec(xml)) {
-	// comment
-	if (match[1]) {
-		let end = xml.indexOf('-->', REGEX.lastIndex)
-		REGEX.lastIndex = end<0 ? xml.length : end+3
-		continue
-	}
-	if (match[2]) {
-		let end = xml.indexOf('?>', REGEX.lastIndex)
-		REGEX.lastIndex = end<0 ? xml.length : end+2
-		continue
-	}
-	let text = xml.substring(last, match.index)
-	if (text)
-		current.childs.push(text)
-	last = REGEX.lastIndex
-	let [all, , , close, name, attrs, empty] = match
-	if (!name)
-		 throw new Error('invalid tag: '+all)
-	if (close) {
-		if (attrs || empty) throw new Error('bad closing tag: '+all)
-		if (current.name != name)
-			throw new Error('wrong closing tag: got '+name+", expected "+current.name)
-		current = current.parent
-		continue
+let root = parse_xml(xml, tag=>{
+	delete tag.attrs.id
+	if (tag.attrs.style) {
+		let fill = /^fill:([^;]*);fill-opacity:1;fill-rule:nonzero;stroke:none$/.exec(tag.attrs.style)
+		if (fill) {
+			tag.attrs.fill = fill[1]
+			delete tag.attrs.style
+		}
 	}
 	
-	let tag = new Element(name)
-	
-	attrs = attrs.split(/(".*?"|'.*?')/g)
-	if (attrs.pop().trim())
-		throw new Error('stuff after attrs: '+all)
-	for (let i=0; i<attrs.length-1; i+=2) {
-		let key = /\s+([^=\s"']+)\s*=\s*/.exec(attrs[i])
-		if (!key)
-			throw new Error('invalid attribute: '+attrs[i])
-		let value = attrs[i+1].slice(1,-1)
-		tag.attrs[key[1]] = value
+	if (tag.name=='path') {
+		let d = tag.attrs.d
+		let cc = parse(d, !true)
+		d = ""
+		if (do_unflip) {
+			let x,y
+			let tfa = tag.attrs
+			if (tfa.transform) {
+				0,[,x,y] = tfa.transform.match(/^translate[(]\s*([^),\s]*)[,\s]+([^),\s]*)\s*[)]$/)
+				x = pnum(x)
+				y = pnum(y)
+			}
+			x+=1e5
+			y-=1e5
+			
+			//y = -y
+			
+			for (let c of cc) {
+				//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
+				if (tfa.transform)
+					transform(c, Matrix.Translate(x,y))
+				d += unparse_rel([c])
+			}
+			delete tfa.transform
+		} else {
+			first = 1
+			let c3 = []
+			let [c1,c2] = cc
+			for (let i=0; i<c1.length; i+=2) {
+				c3[i] = c1[i].Middle(c2[i])
+				c3[i+1] = c1[i+1].Middle(c2[i+1])
+			}
+			cc.push(c3)//*/
+			for (let c of cc) {
+				let orient = find_top(c)
+				print('PATH!','len '+c.length+', 🔃 '+orient)
+				if (first ? (orient < 0) : (orient > 0)) {
+					print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
+				}
+				
+				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:18.0325e5,y:0})
+				//transform(c, Matrix.Scale(3/3.0333,3/3.3165))
+				/*
+				let s = solve_rrect_stroke(c)
+				if (s) {
+					let dist = (s[2]+s[3])/2
+					d += `M ${s[0].fmt()} L ${s[1].fmt()}`
+					console.warn(dist.fmt())
+					continue
+				}//**/
+				
+				//short_to_arcs(c, 0.5e5)
+				
+				//replace_corner_arcs(c)
+
+				if (0) {
+					let elem = to_rrect(c)
+					elem.attrs.fill = tag.attrs.fill
+					print(elem.toString())
+				}
+				
+				//rotate(c, 10)
+				//merge_lines(c)
+				//rotate(c, 2)
+				//transform(c, Matrix.Translate(+0.0025e5, 0))
+				d += unparse_abs([c])
+				
+				first = 0
+			}//*/
+		}
+		tag.attrs.d = d
 	}
-	current.childs.push(tag)
-	tag.parent = current
-	if (empty)
-		tag.empty = true
-	else
-		current = tag
-}
-{
-	let text = xml.substring(last)
-	if (text)
-		current.childs.push(text)
-}
-if (current!=root)
-	throw new Error('unclosed tags.')
+})
 
 console.log(String(root))
 
 process.exit(0)
+
+function parse_xml(xml, step) {
+	let REGEX = /(<!--)|(<[?])|<([/])?([-a-zA-Z0-9_:]+)([^>]*?)([/])?>|</g
+	let match
+	let last = 0
+	let comment
+	let root = new Root(), current = root
+	while (match = REGEX.exec(xml)) {
+		// comment
+		if (match[1]) {
+			let end = xml.indexOf('-->', REGEX.lastIndex)
+			REGEX.lastIndex = end<0 ? xml.length : end+3
+			continue
+		}
+		if (match[2]) {
+			let end = xml.indexOf('?>', REGEX.lastIndex)
+			REGEX.lastIndex = end<0 ? xml.length : end+2
+			continue
+		}
+		let text = xml.substring(last, match.index)
+		if (text)
+			current.childs.push(text)
+		last = REGEX.lastIndex
+		let [all, , , close, name, attrs, empty] = match
+		if (!name)
+			throw new Error('invalid tag: '+all)
+		if (close) {
+			if (attrs || empty) throw new Error('bad closing tag: '+all)
+			if (current.name != name)
+				throw new Error('wrong closing tag: got '+name+", expected "+current.name)
+			current = current.parent
+			continue
+		}
+		
+		let tag = new Element(name)
+		
+		attrs = attrs.split(/("[^]*?"|'[^]*?')/g)
+		if (attrs.pop().trim())
+			throw new Error('stuff after attrs: '+all)
+		for (let i=0; i<attrs.length-1; i+=2) {
+			let key = /\s+([^=\s"']+)\s*=\s*/.exec(attrs[i])
+			if (!key)
+				throw new Error('invalid attribute: '+attrs[i])
+			let value = attrs[i+1].slice(1,-1)
+			tag.attrs[key[1]] = value
+		}
+		current.childs.push(tag)
+		tag.parent = current
+		if (empty)
+			tag.empty = true
+		else
+			current = tag
+		step?.(tag)
+	}
+	{
+		let text = xml.substring(last)
+		if (text)
+			current.childs.push(text)
+	}
+	if (current!=root)
+		throw new Error('unclosed tags.')
+	return root
+}
+
+function make_star(id, od, num) {
+	let con = []
+	
+	function pa(dist, an, ad) {
+		let angle = an*2*Math.PI/ad
+		return new Point(Math.cos(angle)*dist, Math.sin(angle)*dist)
+	}
+	
+	for (let i=0; i<num; i++) {
+		let po = pa(od, i, num)
+		let pi = pa(id, i+0.5, num)
+		con.push(po, new SegL(), pi, new SegL())
+	}
+	return con
+}
 
 xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*?)([/])?>/g, (m,b,d,a,cl)=>{
 	let cc = parse(d, true)
