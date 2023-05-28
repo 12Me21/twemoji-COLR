@@ -15,8 +15,12 @@ function fmt(num) {
 }
 function pnum(ns) {
 	let n = Number(ns+"e5")
-	if (n != (n|0)) //if (isNaN(n))
+	if (n != (n|0)) {//if (isNaN(n))
+		// this weird special case is because, for some reason the older svgs use 10e-4 instead of 0.001 sometimes (and no other e notation values)
+		if (ns=='10e-4') return pnum('0.001')
+		if (ns=='-10e-4') return pnum('-0.001')
 		throw new Error('invalid number: '+ns)
+	}
 	return n
 }
 function F([str0, ...strs], ...values) {
@@ -35,6 +39,30 @@ function round(x, n) {
 	return Math.round(x/n)*n
 }
 
+/*function DEG_SIN(deg) {
+	let sign = Math.sign(deg)
+	if (sign==-1)
+		deg = -deg
+	if (deg>90)
+	if (deg==45)
+		return Math.SQRT1_2 * sign
+	if (deg==90)
+		return 1 * sign
+	if (deg==30)
+		return 0.5 * sign
+	if (deg==60)
+		return Math.sqrt(0.75) * sign
+	
+	// (0,45)
+	if (deg<45)
+		return Math.sin(Math.PI*2*deg/360) * sign
+	// (45,90)
+	if (deg<90)
+		return Math.cos(Math.PI*2*(90-deg)/360) * sign
+	// (90,135)
+	return Math.cos(Math.PI*2*(deg-90)/360) * sign
+}*/
+
 class Matrix {
 	static Scale(xx, yy=xx) {
 		return {__proto__:Matrix.prototype, xx, yy}
@@ -43,21 +71,50 @@ class Matrix {
 		return {__proto__:Matrix.prototype, x, y}
 	}
 	static Rotate(a) {
+		let flipsin, flipcos
+		if (a < 0)
+			a = -a, flipsin = true
+		a = a % 360
+		if (a >= 180)
+			a -= 180, flipsin = flipcos = true
+		
 		let cos, sin
 		if (a==45) {
 			cos = sin = Math.SQRT1_2
-		} else if (a==-45) {
-			cos = Math.SQRT1_2
-			sin = -cos
+		} else if (a==90) {
+			sin = 1
+			cos = 0
+		} else if (a==135) {
+			cos = sin = Math.SQRT1_2
+			flipcos = !flipcos
+		} else if (a==120) {
+			cos = 0.5
+			sin = Math.sqrt(0.75)
+			flipcos = !flipcos
+		} else if (a==150) {
+			cos = Math.sqrt(0.75)
+			sin = 0.5
+			flipcos = !flipcos
+		} else if (a==0) {
+			sin = 0
+			cos = 1
+		} else if (a==30) {
+			cos = Math.sqrt(0.75)
+			sin = 0.5
+		} else if (a==60) {
+			cos = 0.5
+			sin = Math.sqrt(0.75)
 		} else {
 			let r = Math.PI*2*a/360
 			cos = Math.cos(r)
 			sin = Math.sin(r)
 		}
+		if (flipcos)
+			cos = -cos
 		return {
 			__proto__:Matrix.prototype,
 			xx: cos,	yy: cos,
-			yx: -sin, xy: sin,
+			yx: flipsin ? sin : -sin, xy: flipsin ? -sin : sin,
 		}
 	}
 }
@@ -244,6 +301,10 @@ class SegA extends Seg {
 	}
 	reverse() {
 		this.sweep = !this.sweep
+	}
+	round() {
+		this.angle = round(this.angle)
+		this.radius.round()
 	}
 	// todo: transform??
 	transform(matrix) {
@@ -674,7 +735,6 @@ function unparse_rel(contours) {
 			rotate(c, -(gap+1))
 			print("ROTATED BY",-(gap+1),"DUE TO GAP")
 		}
-			
 		
 		//console.warn('m', c.length)
 		let prev = c[0]
@@ -761,7 +821,13 @@ function unparse_rel(contours) {
 
 function unparse_abs(contours) {
 	let out = ""
-	for (let c of contours) {
+	outer: for (let c of contours) {
+		let gap = c.findIndex(x=>x instanceof SegGap)
+		if (gap>=0) {
+			rotate(c, -(gap+1))
+			print("ROTATED BY",-(gap+1),"DUE TO GAP")
+		}
+		
 		//console.warn('m', c.length)
 		let prev = c[0]
 		out += " M\n"+prev.fmt()
@@ -780,6 +846,17 @@ function unparse_abs(contours) {
 				out += "\n L"
 			else if (seg instanceof SegA)
 				out += "\n A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
+			else if (seg instanceof SegGap) {
+				if (i==c.length-1) {
+					out += "\n"
+					continue outer
+				}
+				print(c)
+				throw new Error('gap in middle of contour')
+			} else {
+				console.error(seg)
+				throw new Error('what the heck is this segment? '+String(seg))
+			}
 			let pos = get(c, i+1)
 			out += "\n"+pos.fmt()
 			prev = pos
@@ -806,9 +883,9 @@ function pick_good_start(c) {
 }
 
 function find_top(con) {
-	let best
+	let best=null
 	for (let i=0; i<con.length; i+=2) {
-		if (!best || con[i].y < con[best].y)
+		if (best==null || con[i].y < con[best].y)
 			best = i
 	}
 	//rotate(con, -best)
@@ -835,7 +912,6 @@ function find_top(con) {
 				c = seg0.c2
 		}
 	}
-	//console.warn(a,b,c)
 	let o = orientation(a,b,c)
 	if (o==0) {
 		console.warn('bad angle! one last try..')
@@ -989,7 +1065,7 @@ function short_to_arcs(c, rad) {
 		let seg = get(c,i)
 		let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*1.5//2.1
 		if (short) {
-			print('spliced arc', rr)
+			print('spliced arc', rr, i)
 			if (!rr) {
 				c[i] = new SegA(new Point(rad, rad), 0, false, true)
 				rr = true
@@ -1008,6 +1084,52 @@ function short_to_arcs(c, rad) {
 	}
 }
 
+/* ellipsefinder */
+function see_ellipse(c) {
+	let avg = new Point(0,0)
+	
+	for (let i=0; i<c.length; i+=2) {
+		avg = avg.Add(c[i])
+	}
+	avg = avg.Divide(c.length/2)
+	
+	let rads = []
+	let aang=0
+	for (let i=0; i<4; i+=2) {
+		let p1 = c[i]
+		let p2 = get(c, i+4)
+		let d = p2.Subtract(p1)
+		let ang = Math.atan2(d.x, d.y)*360/(Math.PI*2)
+		if (i>0) {
+			ang += 90
+		}
+		ang += 360
+		ang %= 180
+		if (ang > 90)
+			ang = ang - 180
+		
+		let diam = Math.hypot(d.x, d.y)
+		rads.push(diam/2)
+		aang += ang
+		//print('angle, diameter', ang, diam)
+	}
+	aang /= 2
+	
+	if (aang > 45) {
+		rads.reverse()
+		aang -= 90
+	} else if (aang <= -45) {
+		rads.reverse()
+		aang += 90
+	}
+	if (aang)
+		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"/>`)
+	else
+		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()})"/>`)
+}
+	//*/
+
+
 
 
 function find_caps(c, radius) {
@@ -1015,24 +1137,24 @@ function find_caps(c, radius) {
 	for (let i=0; i<c.length; i+=2) {
 		let p1 = get(c,i)
 		let j
-		for (j=1; j<=1; j++) {
+		for (j=1; j<=3; j++) {
 			let i2 = i+j*2
 			let p2 = get(c,i2)
 			let d = p1.dist(p2)
-			console.log('checking', i, i2, d)
+//			console.log('checking', i, i2, d)
 			if (Math.abs(d-radius*2)<0.01e5)
 				break
 		}
-		if (j<2) {
+		if (j<=3) {
 			cap_ends.push([i,i+j*2])
 		}
 	}
 	return cap_ends
 }
 
-let do_unflip = process.argv[3]=='unflip'
-if (do_unflip)
-	print("UNFLIPPING!")
+//let do_unflip = process.argv[3]=='unflip'
+//if (do_unflip)
+//	print("UNFLIPPING!")
 
 function ringcopy(c, start, end) {
 	let out = []
@@ -1062,6 +1184,20 @@ class Element {
 			out += ">"+this.childs.join("")+"</"+this.name+">"
 		return out
 	}
+	replaceChild(nw, old) {
+		let i = this.childs.indexOf(old)
+		if (i<0) throw new Error('not child of')
+		old.parent = null
+		this.childs[i] = nw
+		if (nw instanceof Element)
+			nw.parent = this
+	}
+	removeChild(old) {
+		let i = this.childs.indexOf(old)
+		if (i<0) throw new Error('not child of')
+		old.parent = null
+		this.childs.splice(i, 1)
+	}
 }
 class Root extends Element {
 	constructor() {
@@ -1071,53 +1207,126 @@ class Root extends Element {
 		return this.childs.join("")
 	}
 }
-/*let sz = make_star(12.28e5, 16.77e5, 16)
-round_contour(sz)
-console.log(unparse_rel([sz]))*/
 
-let xml
+/*
+let sz = make_star(14.21444e5-1.66666e5, 11.92836e5-2e5, 12)
+round_contour(sz)
+console.log(unparse_rel([sz]))
+//*/
+
 let first = true
-xml = process.argv[2]
+
+let OPT = {__proto__:null}
+let [ , , xml, ...args] = process.argv
+let commands = []
+while (args.length) {
+	let cmd = args.shift()
+	if (cmd=='rot') {
+		let amt = +args.shift()
+		commands.push(c=>{rotate(c,amt*2)})
+	}
+	else if (cmd=='rrect-stroke') {
+		commands.push((c)=>{
+			let s = solve_rrect_stroke(c)
+			if (s) {
+				console.warn(s[0].Middle(s[1]).fmt(), s[0].dist(s[1]).fmt())
+				let dist = (s[2]+s[3])/2
+				let path = [s[0], new SegL(), s[1], new SegGap()]
+				let elem = new Element('path')
+				elem.attrs.d = unparse_rel([path])
+				elem.attrs['stroke-width'] = dist.fmt()
+				elem.attrs['stroke-linecap'] = 'round'
+				elem.attrs.fill = "none"				
+				elem.attrs.stroke = ""
+				elem.empty = true
+				console.warn(elem.toString())
+			}
+		})
+	}
+	else if (cmd=='unflip') {
+		OPT.unflip = true
+	} else if (cmd=='rrect') {
+		commands.push((c,tag)=>{
+			let elem = to_rrect(c)
+			elem.empty = true
+			if (tag.attrs.fill)
+				elem.attrs.fill = tag.attrs.fill
+			console.warn(elem.toString())
+		})
+	} else if (cmd=='corner-arcs') {
+		commands.push(c=>{replace_corner_arcs(c)})
+	} else {
+		throw new Error('unknown command: '+cmd)
+	}
+}
 
 let output = x=>process.stdout.write(x)
 
+let defstyle = {
+	__proto__:null,
+	'fill-opacity':'1',
+	'fill-rule':'nonzero',
+	'stroke':'none',
+}
+
 let root = parse_xml(xml, tag=>{
-	delete tag.attrs.id
+	if (tag.name!='clipPath' && tag.parent?.name!='defs')
+		delete tag.attrs.id
 	if (tag.attrs.style) {
-		let fill = /^fill:([^;]*);fill-opacity:1;fill-rule:nonzero;stroke:none$/.exec(tag.attrs.style)
-		if (fill) {
-			tag.attrs.fill = fill[1]
-			delete tag.attrs.style
+		let styles = tag.attrs.style.split(";")
+		for (let s of styles) {
+			if (!s) continue
+			let [,p,v] = /^\s*(.*?)\s*:\s*(.*?)\s*$/.exec(s)
+			if (defstyle[p]!=v)
+				tag.attrs[p] = v
 		}
+		delete tag.attrs.style
 	}
+	
+	if (tag.name=='svg') {
+		for (let an in tag.attrs)
+			delete tag.attrs[an]
+		tag.attrs.xmlns="http://www.w3.org/2000/svg"
+		tag.attrs.viewBox="0 0 36 36"
+	}
+	
+	let fc = true && !OPT.unflip
+	
+/*	if (tag.name=='circle') {
+		let p = new Point(pnum(tag.attrs.cx), pnum(tag.attrs.cy))
+		p.transform({xx:1,yy:1,xy:0,yx:0,x:-0.75e5,y:-36e5})
+		p.transform(Matrix.Rotate(45))
+		tag.attrs.cx = p.x.fmt()
+		tag.attrs.cy = p.y.fmt()
+	}*/
 	
 	if (tag.name=='path') {
 		let d = tag.attrs.d
-		let cc = parse(d, !true)
+		let cc = parse(d, !fc)
 		d = ""
-		if (do_unflip) {
-			let x,y
-			let tfa = tag.attrs
+		if (OPT.unflip) {
+			let x=0,y=0
+			let tfa = tag.parent.attrs
 			if (tfa.transform) {
 				0,[,x,y] = tfa.transform.match(/^translate[(]\s*([^),\s]*)[,\s]+([^),\s]*)\s*[)]$/)
 				x = pnum(x)
 				y = pnum(y)
 			}
-			x+=1e5
-			y-=1e5
+			//x-=1e5
+			//y-=1e5
 			
-			//y = -y
+			y = -y
 			
 			for (let c of cc) {
-				//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
-				if (tfa.transform)
+				transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
+				if (x||y)
 					transform(c, Matrix.Translate(x,y))
 				d += unparse_rel([c])
 			}
 			delete tfa.transform
 		} else {
 			first = 1
-			let c3 = []
+			/*let c3 = []
 			let [c1,c2] = cc
 			for (let i=0; i<c1.length; i+=2) {
 				c3[i] = c1[i].Middle(c2[i])
@@ -1125,38 +1334,72 @@ let root = parse_xml(xml, tag=>{
 			}
 			cc.push(c3)//*/
 			for (let c of cc) {
-				let orient = find_top(c)
-				print('PATH!','len '+c.length+', 🔃 '+orient)
-				if (first ? (orient < 0) : (orient > 0)) {
-					print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
+				for (let i=0; i<c.length-2; i+=2) {
+					if (c[i].equal(c[i+2])) {
+						console.warn("🔩 zero length segment: ", c[i+1])
+						c.splice(i, 2)
+						i-=2
+					}
 				}
+				if (!c.some(x=>x instanceof SegGap)) {
+					let orient = find_top(c)
+					print('PATH!','len '+c.length+', 🔃 '+orient)
+					
+					//console.warn(orient, unparse_rel([c]))
+					
+					if (first ? (orient < 0) : (orient > 0)) {
+						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
+					}
+				}
+				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.75e5,y:-36e5})
+				//transform(c, {xx:0,yy:0,xy:1,yx:1,x:0,y:0})
+				//transform(c, Matrix.Rotate(45))
 				
-				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:18.0325e5,y:0})
-				//transform(c, Matrix.Scale(3/3.0333,3/3.3165))
+				//short_to_arcs(c, 1e5)
+				
+				//
+				//check(c)
+				
+				//see_ellipse(c)
+				
+				/*let lens = []
+				let center = new Point(17.875e5,13.875e5)
+				for (let i=0; i<c.length; i+=2) {
+					let p = c[i] 
+					let diff = p.Subtract(center)
+					let dist = diff.hypot()
+					let angle = diff.atan()
+					lens.push([dist,angle])
+				}
+				lens.sort((a,b)=>(a[0]-b[0]))
+				console.warn(lens.join("\n"))*/
+				
 				/*
-				let s = solve_rrect_stroke(c)
-				if (s) {
-					let dist = (s[2]+s[3])/2
-					d += `M ${s[0].fmt()} L ${s[1].fmt()}`
-					console.warn(dist.fmt())
-					continue
-				}//**/
+chips
+let h = c[4].Subtract(c[0])
+				let v = c[6].Subtract(c[2])
+				let an = ((v.atan()+360)%360 + (h.atan()+90+360)%360)/2
+				let sc = (h.hypot()/6e5 + v.hypot()/8e5)/2
+				an += 90
+				if (an>180)
+					an = an-360
+				console.warn(`<use href="#chip1" transform="translate(${c[4].Middle(c[0]).fmt()}) scale(${sc}) rotate(${an})"/>`)*/
 				
-				//short_to_arcs(c, 0.5e5)
-				
-				//replace_corner_arcs(c)
-
-				if (0) {
-					let elem = to_rrect(c)
-					elem.attrs.fill = tag.attrs.fill
-					print(elem.toString())
-				}
-				
-				//rotate(c, 10)
+				/*rotate(c, 2)
+				c.splice(1, 3, new SegA(new Point(1e5,1e5)))
+				c.splice(-3, 3, new SegL())*/
 				//merge_lines(c)
-				//rotate(c, 2)
-				//transform(c, Matrix.Translate(+0.0025e5, 0))
-				d += unparse_abs([c])
+				//transform(c, Matrix.Scale(-1,1))
+				//transform(c, Matrix.Translate(36e5,0))
+				//round_contour(c)
+				
+				//check(c)
+				
+				for (let cmd of commands)
+					cmd(c, tag)
+				
+				d += unparse_rel([c])
+				// TODO! we need to round the absolute coordinates BEFORE converting to relative, not after!!
 				
 				first = 0
 			}//*/
@@ -1164,6 +1407,19 @@ let root = parse_xml(xml, tag=>{
 		tag.attrs.d = d
 	}
 })
+
+if (0) {
+	function cleanup(node) {
+		if (node.name=='g' && Object.keys(node.attrs).length==0 && node.childs.filter(x=>x instanceof Element).length==1) {
+			node.parent.replaceChild(node.childs.find(x=>x instanceof Element), node)
+		}
+		for (let c of node.childs) {
+			if (c instanceof Element)
+				cleanup(c)
+		}
+	}
+	cleanup(root.childs[0])
+}
 
 console.log(String(root))
 
@@ -1311,7 +1567,7 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*?)([/])?>/g, (m,b,d,a
 		//transform(c, Matrix.Scale(1.01475, 1.01475))
 		
 		//
-		if (do_unflip)
+		if (OPT.unflip)
 			transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
 		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:26.376e5,y:-10.8584e5})
 		
@@ -1350,50 +1606,7 @@ xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*?)([/])?>/g, (m,b,d,a
 		transform(c, Matrix.Scale(sc))
 		transform(c, Matrix.Translate(-6.5e5,-8e5))
 		round_contour(c)*/
-		
-		/* ellipsefinder
-		let avg = new Point(0,0)
-		
-		for (let i=0; i<c.length; i+=2) {
-			avg = avg.Add(c[i])
-		}
-		avg = avg.Divide(c.length/2)
-		
-		let rads = []
-		let aang=0
-		for (let i=0; i<4; i+=2) {
-			let p1 = c[i]
-			let p2 = get(c, i+4)
-			let d = p2.Subtract(p1)
-			let ang = Math.atan2(d.x, d.y)*360/(Math.PI*2)
-			if (i>0) {
-				ang += 90
-			}
-			ang += 360
-			ang %= 180
-			if (ang > 90)
-				ang = ang - 180
-			
-			let diam = Math.hypot(d.x, d.y)
-			rads.push(diam/2)
-			aang += ang
-			//print('angle, diameter', ang, diam)
-		}
-		aang /= 2
-		
-		if (aang > 45) {
-			rads.reverse()
-			aang -= 90
-		} else if (aang <= -45) {
-			rads.reverse()
-			aang += 90
-		}
-		if (aang)
-			print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"${attrs}>`)
-		else
-			print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()})"${attrs}>`)
-		//*/
-		
+				
 		//short_to_arcs(c, 1e5)
 		
 		//rotate(c, 2*4); print('rotate!')
