@@ -1054,7 +1054,9 @@ function replace_corner_arcs(c) {
 			if (err > 0.005)
 				continue
 			console.warn('corner?', err)
-			c[i] = new SegA(new Point(Math.abs(d.x), Math.abs(d.y)), 0, false, true) // todo: correct sweep
+			
+			let or = orientation(p1, seg.c1.Middle(seg.c2), p2)
+			c[i] = new SegA(new Point(Math.abs(d.x), Math.abs(d.y)), 0, false, or>=0) // todo: correct sweep
 		}
 	}
 }
