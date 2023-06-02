@@ -33,7 +33,7 @@ function F([str0, ...strs], ...values) {
 	}, str0)
 }
 
-function round(x, n) {
+function round(x, n/*=100*/) {
 	if (!n)
 		return Math.round(x) // nhhh
 	return Math.round(x/n)*n
@@ -71,6 +71,7 @@ class Matrix {
 		return {__proto__:Matrix.prototype, x, y}
 	}
 	static Rotate(a) {
+		let a0 = a
 		let flipsin, flipcos
 		if (a < 0)
 			a = -a, flipsin = true
@@ -115,6 +116,7 @@ class Matrix {
 			__proto__:Matrix.prototype,
 			xx: cos,	yy: cos,
 			yx: flipsin ? sin : -sin, xy: flipsin ? -sin : sin,
+			angle: a0,
 		}
 	}
 }
@@ -124,6 +126,7 @@ Matrix.prototype.xy = 0
 Matrix.prototype.yx = 0
 Matrix.prototype.x = 0
 Matrix.prototype.y = 0
+Matrix.prototype.angle = null
 
 class Point {
 	constructor(x, y) {
@@ -309,8 +312,21 @@ class SegA extends Seg {
 	// todo: transform??
 	transform(matrix) {
 		// HACK
-		this.radius.x *= matrix.xx
-		this.radius.y *= matrix.yy
+		if (matrix.angle!=null) {
+			this.angle += pnum(String(matrix.angle)) // hhh?
+			return
+		} else if (matrix.xy || matrix.yx) {
+			throw new Error('cant skew arc')
+		}
+		if (matrix.xx!=1 || matrix.yy!=1) {
+			if (this.angle==0 || this.radius.x==this.radius.y) {
+				this.radius.x *= matrix.xx
+				this.radius.y *= matrix.yy
+				
+			} else {
+				throw new Error('cant scale arc')
+			}
+		}
 	}
 }
 SegA.prototype.letter = "a"
@@ -485,10 +501,10 @@ function to_rrect(c) {
 		let y = corners.topleft.y
 		let w = corners.bottomright.x - x
 		let h = corners.bottomright.y - y
-		elem.attrs.x = fmt(x)
-		elem.attrs.y = fmt(y)
 		elem.attrs.width = fmt(w)
 		elem.attrs.height = fmt(h)
+		elem.attrs.x = fmt(x)
+		elem.attrs.y = fmt(y)
 		return elem
 	}
 	
@@ -727,14 +743,21 @@ function round_contour(c, matrix) {
 		x.round()
 }
 
+function rotate_to_gap(c) {
+	let gap = c.findIndex(x=>x instanceof SegGap)
+	if (gap==c.length-1)
+		return false
+	if (gap>=0) {
+		rotate(c, -(gap+1))
+		print("ROTATED BY",-(gap+1),"DUE TO GAP")
+		return true
+	}
+}
+
 function unparse_rel(contours) {
 	let out = ""
 	outer: for (let c of contours) {
-		let gap = c.findIndex(x=>x instanceof SegGap)
-		if (gap>=0) {
-			rotate(c, -(gap+1))
-			print("ROTATED BY",-(gap+1),"DUE TO GAP")
-		}
+		rotate_to_gap(c)
 		
 		//console.warn('m', c.length)
 		let prev = c[0]
@@ -822,11 +845,7 @@ function unparse_rel(contours) {
 function unparse_abs(contours) {
 	let out = ""
 	outer: for (let c of contours) {
-		let gap = c.findIndex(x=>x instanceof SegGap)
-		if (gap>=0) {
-			rotate(c, -(gap+1))
-			print("ROTATED BY",-(gap+1),"DUE TO GAP")
-		}
+		rotate_to_gap(c)
 		
 		//console.warn('m', c.length)
 		let prev = c[0]
@@ -1053,9 +1072,11 @@ function replace_corner_arcs(c) {
 			let err = Math.hypot(f1-0.5523, f2-0.5523)
 			if (err > 0.005)
 				continue
-			console.warn('corner?', err)
 			
 			let or = orientation(p1, seg.c1.Middle(seg.c2), p2)
+			console.warn('corner?', err.toFixed(7), +(or>=0))
+			
+			
 			c[i] = new SegA(new Point(Math.abs(d.x), Math.abs(d.y)), 0, false, or>=0) // todo: correct sweep
 		}
 	}
@@ -1172,7 +1193,7 @@ class Element {
 	attrs = {__proto__:null}
 	name = null
 	empty = false
-	parent = null
+	parentNode = null
 	constructor(name) {
 		this.name = name
 	}
@@ -1189,16 +1210,22 @@ class Element {
 	replaceChild(nw, old) {
 		let i = this.childs.indexOf(old)
 		if (i<0) throw new Error('not child of')
-		old.parent = null
+		old.parentNode = null
 		this.childs[i] = nw
 		if (nw instanceof Element)
-			nw.parent = this
+			nw.parentNode = this
 	}
 	removeChild(old) {
 		let i = this.childs.indexOf(old)
 		if (i<0) throw new Error('not child of')
-		old.parent = null
+		old.parentNode = null
 		this.childs.splice(i, 1)
+	}
+	appendChild(child) {
+		if (child.parentNode)
+			child.parentNode.removeChild(child)
+		this.childs.push(child)
+		child.parentNode = this
 	}
 }
 class Root extends Element {
@@ -1228,7 +1255,7 @@ while (args.length) {
 		commands.push(c=>{rotate(c,amt*2)})
 	}
 	else if (cmd=='rrect-stroke') {
-		commands.push((c)=>{
+		commands.push((c,tag)=>{
 			let s = solve_rrect_stroke(c)
 			if (s) {
 				console.warn(s[0].Middle(s[1]).fmt(), s[0].dist(s[1]).fmt())
@@ -1241,12 +1268,27 @@ while (args.length) {
 				elem.attrs.fill = "none"				
 				elem.attrs.stroke = ""
 				elem.empty = true
-				console.warn(elem.toString())
+				//console.warn(elem.toString())
+				tag.parentNode.replaceChild(elem,tag)
 			}
 		})
 	}
 	else if (cmd=='unflip') {
 		OPT.unflip = true
+	}
+	else if (cmd=='abs') {
+		OPT.abs = true
+	}
+	else if (cmd=='rev') {
+		commands.push(c=>{rev1(c)})
+	}
+	else if (cmd=='see-ellipse') {
+		commands.push(c=>{see_ellipse(c)})
+	}
+	else if (cmd=='unflip3') {
+		OPT.unflip = 3
+	} else if (cmd=='unflip2') {
+		OPT.unflip = 2
 	} else if (cmd=='rrect') {
 		commands.push((c,tag)=>{
 			let elem = to_rrect(c)
@@ -1254,6 +1296,7 @@ while (args.length) {
 			if (tag.attrs.fill)
 				elem.attrs.fill = tag.attrs.fill
 			console.warn(elem.toString())
+			tag.parentNode.replaceChild(elem,tag)
 		})
 	} else if (cmd=='corner-arcs') {
 		commands.push(c=>{replace_corner_arcs(c)})
@@ -1272,7 +1315,7 @@ let defstyle = {
 }
 
 let root = parse_xml(xml, tag=>{
-	if (tag.name!='clipPath' && tag.parent?.name!='defs')
+	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
 		delete tag.attrs.id
 	if (tag.attrs.style) {
 		let styles = tag.attrs.style.split(";")
@@ -1285,11 +1328,17 @@ let root = parse_xml(xml, tag=>{
 		delete tag.attrs.style
 	}
 	
-	if (tag.name=='svg') {
-		for (let an in tag.attrs)
-			delete tag.attrs[an]
-		tag.attrs.xmlns="http://www.w3.org/2000/svg"
-		tag.attrs.viewBox="0 0 36 36"
+	if (OPT.unflip) {
+		if (tag.name=='svg') {
+			for (let an in tag.attrs)
+				delete tag.attrs[an]
+			tag.attrs.xmlns="http://www.w3.org/2000/svg"
+			tag.attrs.viewBox="0 0 36 36"
+		}
+		if (tag.name=='metadata') {
+			tag.parentNode.removeChild(tag)
+			return
+		}
 	}
 	
 	let fc = true && !OPT.unflip
@@ -1308,19 +1357,33 @@ let root = parse_xml(xml, tag=>{
 		d = ""
 		if (OPT.unflip) {
 			let x=0,y=0
-			let tfa = tag.parent.attrs
+			let tfa = OPT.unflip==3 ? tag.attrs : tag.parentNode.attrs
 			if (tfa.transform) {
 				0,[,x,y] = tfa.transform.match(/^translate[(]\s*([^),\s]*)[,\s]+([^),\s]*)\s*[)]$/)
 				x = pnum(x)
 				y = pnum(y)
+			} else {
+				if (OPT.unflip==3) {
+					y = 37e5
+					x = -1e5
+				}
 			}
-			//x-=1e5
-			//y-=1e5
+			if (OPT.unflip==3) {
+				x+=1e5
+				y-=1e5
+			}
+			if (OPT.unflip==true) {
+				x-=1e5
+				y-=1e5
+			}
 			
-			y = -y
+			if (OPT.unflip!=3)
+				y = -y
 			
+			cc.reverse()
 			for (let c of cc) {
-				transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
+				if (OPT.unflip!=3)
+					transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
 				if (x||y)
 					transform(c, Matrix.Translate(x,y))
 				d += unparse_rel([c])
@@ -1353,16 +1416,13 @@ let root = parse_xml(xml, tag=>{
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
 				}
-				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.75e5,y:-36e5})
-				//transform(c, {xx:0,yy:0,xy:1,yx:1,x:0,y:0})
-				//transform(c, Matrix.Rotate(45))
+				//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0e5,y:0e5})
+				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.4277e5,y:-34.7441e5})
+				//transform(c, Matrix.Rotate(-45))
+				transform(c, Matrix.Translate(0e5,2e5))
 				
-				//short_to_arcs(c, 1e5)
-				
-				//
+				//short_to_arcs(c, 0.187e5)
 				//check(c)
-				
-				//see_ellipse(c)
 				
 				/*let lens = []
 				let center = new Point(17.875e5,13.875e5)
@@ -1400,7 +1460,12 @@ let h = c[4].Subtract(c[0])
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				d += unparse_rel([c])
+				//c = [c[0].Middle(c[2]), new SegGap]
+				
+				if (OPT.abs)
+					d += unparse_abs([c])
+				else
+					d += unparse_rel([c])
 				// TODO! we need to round the absolute coordinates BEFORE converting to relative, not after!!
 				
 				first = 0
@@ -1410,11 +1475,11 @@ let h = c[4].Subtract(c[0])
 	}
 })
 
-if (0) {
+if (OPT.unflip) {
 	function cleanup(node) {
-		if (node.name=='g' && Object.keys(node.attrs).length==0 && node.childs.filter(x=>x instanceof Element).length==1) {
-			node.parent.replaceChild(node.childs.find(x=>x instanceof Element), node)
-		}
+		/*if (node.name=='g' && Object.keys(node.attrs).length==0 && node.childs.filter(x=>x instanceof Element).length==1) {
+			node.parentNode.replaceChild(node.childs.find(x=>x instanceof Element), node)
+			}*/
 		for (let c of node.childs) {
 			if (c instanceof Element)
 				cleanup(c)
@@ -1422,8 +1487,13 @@ if (0) {
 	}
 	cleanup(root.childs[0])
 }
-
-console.log(String(root))
+{
+	let out = String(root)
+	if (OPT.unflip)
+		out = out.replaceAll('><','>\n<')
+	process.stdout.write(out)
+	process.stdout.write('\n')
+}
 
 process.exit(0)
 
@@ -1432,17 +1502,21 @@ function parse_xml(xml, step) {
 	let match
 	let last = 0
 	let comment
-	let root = new Root(), current = root
+	let root = new Root()
+	let stack = [], current = root
+	function skip(term) {
+		let end = xml.indexOf(term, REGEX.lastIndex)
+		REGEX.lastIndex = end<0 ? xml.length : end+term.length
+	}
+	
 	while (match = REGEX.exec(xml)) {
 		// comment
 		if (match[1]) {
-			let end = xml.indexOf('-->', REGEX.lastIndex)
-			REGEX.lastIndex = end<0 ? xml.length : end+3
+			skip('-->')
 			continue
 		}
 		if (match[2]) {
-			let end = xml.indexOf('?>', REGEX.lastIndex)
-			REGEX.lastIndex = end<0 ? xml.length : end+2
+			skip('?>')
 			continue
 		}
 		let text = xml.substring(last, match.index)
@@ -1456,7 +1530,7 @@ function parse_xml(xml, step) {
 			if (attrs || empty) throw new Error('bad closing tag: '+all)
 			if (current.name != name)
 				throw new Error('wrong closing tag: got '+name+", expected "+current.name)
-			current = current.parent
+			current = stack.pop()
 			continue
 		}
 		
@@ -1473,11 +1547,13 @@ function parse_xml(xml, step) {
 			tag.attrs[key[1]] = value
 		}
 		current.childs.push(tag)
-		tag.parent = current
+		tag.parentNode = current
 		if (empty)
 			tag.empty = true
-		else
+		else {
+			stack.push(current)
 			current = tag
+		}
 		step?.(tag)
 	}
 	{
@@ -1784,3 +1860,11 @@ i guess it doesnt even need to really inherit, it can just copy, in reality, but
 */
 
 //circlize Foggy emoji ..
+
+// \.499[0-9]*\|\.500[0-9]* → .5
+// \([0-9]*\)\.99[89][0-9]* → \,(1+ (string-to-number \1))
+// \.00[01][0-9]* → 
+
+// favicon: old microscope emoji
+
+ cors
