@@ -33,7 +33,8 @@ function F([str0, ...strs], ...values) {
 	}, str0)
 }
 
-function round(x, n/*=100*/) {
+let dr// = 100
+function round(x, n=dr) {
 	if (!n)
 		return Math.round(x) // nhhh
 	return Math.round(x/n)*n
@@ -331,6 +332,16 @@ class SegA extends Seg {
 }
 SegA.prototype.letter = "a"
 
+class Contour extends Array {
+	constructor() {
+		super()
+	}
+	get(i) {
+		let len = this.length
+		return this[(i % len + len) % len]
+	}
+}
+
 let rx_num = /[\s,]*([-+]?\d*(?:[.]\d+(?!\d)|\d(?![\d.]))(?:[Ee][-+]?\d+(?!\d))?)/
 
 let rx_x = new RegExp(rx_num.source+"(){0}", 'y')
@@ -433,7 +444,7 @@ function parse(str, nogap) {
 			
 			if (cmd=='M') {
 				autoclose(false)
-				contour = []
+				contour = new Contour()
 				start = next.Copy()
 				cmd="L"
 			} else {
@@ -512,28 +523,30 @@ function to_rrect(c) {
 	
 	let rads = []
 	for (s=1; s<c.length; s+=2) {
-		if (c[s] instanceof SegC || c[s] instanceof SegA) {
+		if (c[s] instanceof SegA) {
 			let p1 = get(c, s-1)
 			let p2 = get(c, s+1)
 			let d = new Point(p2.x-p1.x, p2.y-p1.y)
+			let r = c[s].radius
+			if (Math.abs(Math.abs(d.x)-r.x) <= 0.001e5 && Math.abs(Math.abs(d.y)-r.y) <= 0.001e5) {
 			// found corner
-			if (1 || Math.abs(Math.abs(d.x)-Math.abs(d.y)) <= 1000) {
 				rads.push(new Point(Math.abs(d.x),Math.abs(d.y)))
 				//console.warn("corner", d)
 				if (d.x < 0) {
-					if (d.y < 0) {
+					if (d.y < 0)
 						corners.bottomleft = new Point(p2.x,p1.y)
-					} else {
+					else
 						corners.bottomright = new Point(p1.x,p2.y)
-					}
 				} else {
-					if (d.y < 0) {
+					if (d.y < 0)
 						corners.topleft = new Point(p1.x,p2.y)
-					} else {
+					else
 						corners.topright = new Point(p2.x,p1.y)
-					}
 				}
 			}
+		} else if (c[s] instanceof SegL) {
+		} else {
+			throw new Error('not rrect, contained segment other than A/L')
 		}
 	}
 	//print("corners", corners, rads)
@@ -901,23 +914,27 @@ function pick_good_start(c) {
 	}
 }
 
-function find_top(con) {
-	let best=null
+function extrema(con, axis, sign) {
+	let best=null, by
 	for (let i=0; i<con.length; i+=2) {
-		if (best==null || con[i].y < con[best].y)
-			best = i
+		let y = con[i][axis]*sign
+		if (best==null || y > by)
+			best = i, by = y
 	}
-	//rotate(con, -best)
-	//best -= best
+	return best
+}
+
+function contour_orientation(con) {
+	let top = extrema(con, "y", -1)
 	
-	let a = get(con, best-2)
-	let b = get(con, best)
-	let c = get(con, best+2)
+	let a = get(con, top-2)
+	let b = get(con, top)
+	let c = get(con, top+2)
 	
 	if (a==c) {
 		console.warn("bad angle!")
-		let seg0 = get(con, best-1)
-		let seg1 = get(con, best+1)
+		let seg0 = get(con, top-1)
+		let seg1 = get(con, top+1)
 		if (seg0 instanceof SegC) {
 			if (!seg0.c2.equal(b))
 				a = seg0.c2
@@ -934,7 +951,7 @@ function find_top(con) {
 	let o = orientation(a,b,c)
 	if (o==0) {
 		console.warn('bad angle! one last try..')
-		o = orientation(a,b,get(con, best+4))
+		o = orientation(a,b,get(con, top+4))
 	}
 	return o
 }
@@ -1180,7 +1197,7 @@ function find_caps(c, radius) {
 //	print("UNFLIPPING!")
 
 function ringcopy(c, start, end) {
-	let out = []
+	let out = new c.constructor()
 	end %= c.length
 	start %= c.length
 	for (let i=start; i!=end; i = (i+1)%c.length)
@@ -1260,9 +1277,9 @@ while (args.length) {
 			if (s) {
 				console.warn(s[0].Middle(s[1]).fmt(), s[0].dist(s[1]).fmt())
 				let dist = (s[2]+s[3])/2
-				let path = [s[0], new SegL(), s[1], new SegGap()]
+				let path = new Contour([s[0], new SegL(), s[1], new SegGap()])
 				let elem = new Element('path')
-				elem.attrs.d = unparse_rel([path])
+				elem.attrs.d = unparse_abs([path])
 				elem.attrs['stroke-width'] = dist.fmt()
 				elem.attrs['stroke-linecap'] = 'round'
 				elem.attrs.fill = "none"				
@@ -1291,7 +1308,13 @@ while (args.length) {
 		OPT.unflip = 2
 	} else if (cmd=='rrect') {
 		commands.push((c,tag)=>{
-			let elem = to_rrect(c)
+			replace_corner_arcs(c)
+			let elem
+			try {
+				elem = to_rrect(c)
+			} catch(e) {
+				return
+			}
 			elem.empty = true
 			if (tag.attrs.fill)
 				elem.attrs.fill = tag.attrs.fill
@@ -1407,7 +1430,7 @@ let root = parse_xml(xml, tag=>{
 					}
 				}
 				if (!c.some(x=>x instanceof SegGap)) {
-					let orient = find_top(c)
+					let orient = contour_orientation(c)
 					print('PATH!','len '+c.length+', 🔃 '+orient)
 					
 					//console.warn(orient, unparse_rel([c]))
@@ -1417,10 +1440,33 @@ let root = parse_xml(xml, tag=>{
 					}
 				}
 				//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0e5,y:0e5})
-				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-0.4277e5,y:-34.7441e5})
-				//transform(c, Matrix.Rotate(-45))
-				transform(c, Matrix.Translate(0e5,2e5))
 				
+				/*//measure angles
+				for (let i=0;i<c.length;i+=2) {
+					for (let j=0;j<c.length;j+=2) {
+						if (i>=j) continue
+						let diff = get(c,i).Subtract(get(c,j))
+						let a = diff.atan()
+						if (a<0)
+							a += 360
+						a = a % 90
+						if (a>45)
+							a = 90-a
+						console.warn(a)
+					}
+					}//*/
+				/*transform(c, {xx:1,yy:1,xy:0,yx:0,x:-4.5e5,y:-31.5e5})
+				transform(c, Matrix.Rotate(-12))
+				for (let i=0;i<c.length;i+=2) {
+					let p = c[i]
+					let x = (p.x+100e5) % 1e5
+					let y = (p.y+100e5) % 1e5
+					console.log(x.fmt(), y.fmt())
+				}*/
+				
+				
+				//transform(c, Matrix.Translate(0e5,-1e5))
+				//transform(c, Matrix.Scale(1,1/0.8118))
 				//short_to_arcs(c, 0.187e5)
 				//check(c)
 				
@@ -1460,8 +1506,8 @@ let h = c[4].Subtract(c[0])
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				//c = [c[0].Middle(c[2]), new SegGap]
-				
+				//c = new Contour([c[0].Middle(c[2]), new SegGap])
+				//round_contour(c)
 				if (OPT.abs)
 					d += unparse_abs([c])
 				else
@@ -1567,7 +1613,7 @@ function parse_xml(xml, step) {
 }
 
 function make_star(id, od, num) {
-	let con = []
+	let con = new Contour()
 	
 	function pa(dist, an, ad) {
 		let angle = an*2*Math.PI/ad
@@ -1581,253 +1627,6 @@ function make_star(id, od, num) {
 	}
 	return con
 }
-
-xml = xml.replace(/<path(\s[^>]*?)?\s+d="([^">]*)"\s?([^>]*?)([/])?>/g, (m,b,d,a,cl)=>{
-	let cc = parse(d, true)
-	let out = ""
-	console.warn('heck?')
-	
-	let attrs = a.trim()
-	if (b)
-		attrs = b.trim()+" "+attrs
-	
-	if (attrs)
-		attrs = " "+attrs
-	if (cl)
-		attrs += cl
-	
-	/*cc[0].splice(0,2)
-	
-	let bad = get(cc[0], -1)
-	console.warn(bad)
-	bad.c2 = new Point(0,0)
-	bad.c1 = new Point(0,0)*/
-	/*
-	rotate(cc[0], 8)
-	
-	let c1 = cc[0].slice(2,23)
-	
-	let tp = new Point(0,0)
-	let cutted = cc[0].splice(28, 3, tp)
-	console.warn("SNIP",cutted)
-	cutted = cutted[0].Middle(cutted[2])
-	tp.x = cutted.x
-	tp.y = cutted.y
-
-	rotate(cc[0],2)
-
-	let c1 = cc[0].slice(4,9)
-	let c2 = cc[0].slice(12,17)
-	c1.push(new SegL)
-	c2.push(new SegL)
-	print(c1.length, c2.length)
-	
-	rev1(c1)
-	rotate(c1, -2)
-	let c3 = []
-	for (let i=0; i<c1.length; i+=2) {
-		c3[i] = c1[i].Middle(c2[i])
-		c3[i+1] = c1[i+1].Middle(c2[i+1])
-	}
-	cc.push(c3)//*/
-	
-	
-	
-	for (let c of cc) {
-		for (let i=0; i<c.length-2; i+=2) {
-			if (c[i].equal(c[i+2])) {
-				console.warn("🔩 zero length segment: ", c[i+1])
-				c.splice(i, 2)
-				i-=2
-			}
-		}
-		
-		//transform(c, Matrix.Scale(1.01475, 1.01475))
-		
-		//
-		if (OPT.unflip)
-			transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5})
-		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:26.376e5,y:-10.8584e5})
-		
-		let orient = find_top(c)
-		print('PATH!','len '+c.length+', 🔃 '+orient)
-		if (first ? (orient < 0) : (orient > 0)) {
-			print('REVERSING PATH to',first ? 'clockwise' : 'counterclockwise'); rev1(c)
-		}
-		
-		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:0.0119e5,y:0})
-		//transform(c, {xx:34/36,yy:34/36,xy:0,yx:0,x:0,y:0})
-	//	transform(c, Matrix.Translate(-29e5,-4e5))
-		//transform(c, Matrix.Rotate(-45))
-		//*/
-		
-		//transform(c, rotation_matrix(-11.56))
-		
-		/*let matrix = {
-			xx: 1/100,
-			yy: 1/100,
-			yx: 0,
-			xy: 0,
-			x: 0,
-			y: 36e5,
-			}*/
-		/*
-		let matrix = rotation_matrix(45)
-		transform(c, {xx:1,yy:1,xy:0,yx:0,x:-2.468e5,y:-2.468e5})
-		transform(c, matrix)
-		//*/
-		//transform(c, {xx:2/1.912/1.633*1.5,yy:2/2.274/1.633*1.5,xy:0,yx:0,x:0,y:0})
-		//merge_lines(c)
-		
-		//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:-36e5})
-		/*let sc = 0.810735253
-		transform(c, Matrix.Scale(sc))
-		transform(c, Matrix.Translate(-6.5e5,-8e5))
-		round_contour(c)*/
-				
-		//short_to_arcs(c, 1e5)
-		
-		//rotate(c, 2*4); print('rotate!')
-		
-		/* let's
-		let s = solve_rrect_stroke(c)
-		if (s) {
-			let d = (s[2]+s[3])/2
-			console.warn(s,`<path d="M ${s[0].fmt()} L ${s[1].fmt()}" stroke-linecap="round" fill="none" stroke-width="${fmt(d)}" stroke="${(a.match(/fill="(.*?)"/)||["",""])[1]}"/>`)
-		}//*/
-		
-		//c.splice(0,2)
-		//check(c)
-		
-		/*let m = 34/36
-		transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:-18e5})
-		transform(c, {xx:m,yy:m,xy:0,yx:0,x:0,y:0})
-		transform(c, {xx:1,yy:1,xy:0,yx:0,x:18e5,y:18e5})*/
-		
-		//rev1(c)
-		
-		replace_corner_arcs(c)
-		
-		//transform(c, Matrix.Translate(1e5,-1e5))
-		
-		/*if (0) c = c.map(s=>{
-			if (s instanceof Point) {
-				let {x,y} = s
-				let angle = Math.atan2(y-18e5,x-18e5)
-				let dist = Math.hypot(y-18e5,x-18e5)
-				if (dist > 17.25e5)
-					dist = 18e5
-				else
-					dist = 16.5e5
-				return new Point(Math.cos(angle)*dist+18e5, Math.sin(angle)*dist+18e5)
-			}
-			if (s instanceof SegA) {
-				if (s.sweep)
-					s.radius = new Point(18e5,18e5)
-				else
-					s.radius = new Point(16.5e5,16.5e5)
-			}
-			return s
-		})*/
-		
-		/*let centers = []
-		
-		for (let i=1; i<c.length; i+=2) {
-			let seg = c[i]
-			if (seg instanceof SegA) {
-				let i2 = i+1
-				if (get(c,i+2) instanceof SegA)
-					i2 += 2
-				let p1 = get(c,i-1)
-				let p2 = get(c,i2)
-				let d = dist(p1,p2)
-				let center = p1.Middle(p2)
-				console.log('radius 1. dist:',fmt(d),'center:',center.fmt())
-				centers.push(center)
-			}
-			if (seg instanceof SegL) {
-				let p1 = get(c,i-1)
-				let p2 = get(c,i+1)
-				let d = dist(p1,p2)
-				console.log('line. dist:',d.fmt())
-			}
-		}
-		if (centers.length==2) {
-			let diff = centers[1].Subtract(centers[0])
-			console.log('2 centers. dist:', diff.hypot().fmt(), 'angle:', diff.atan())
-			console.log(Point.prototype.Middle.call(...centers).fmt())
-		}*/
-		
-		/*for (let i=1; i<c.length; i++) {
-			if (c[i] instanceof SegC) {
-				let p1 = get(c,i-1)
-				let p2 = get(c,i+1)
-				let d = p2.Subtract(p1)
-				let aa = Math.sqrt((d.x**2+d.y**2)/2)
-				c[i] = new SegA(new Point(aa,aa), 0, false, true)
-			}
-		}*/
-		
-		//rotate(c, -)
-	//	c=c.map(c=>c instanceof SegA ? new SegL() : c)
-		
-		/*
-		let caps = find_caps(c, 1e5)
-		console.log(caps)
-		let c1 = [caps[0][1], caps[1][0]]
-		let c2 = [caps[1][1], caps[0][0]]
-		
-		c1 = ringcopy(c, c1[0], c1[1]+1)
-		c2 = ringcopy(c, c2[0], c2[1]+1)
-		console.log(c1, c2)
-		c1.push(new SegGap)
-		c2.push(new SegGap)
-		rev1(c2)
-		rotate(c2, -2)
-		let c3 = []
-		for (let i=0; i<c1.length; i+=2) {
-			c3[i] = c1[i].Middle(c2[i])
-			c3[i+1] = c1[i+1].Middle(c2[i+1])
-		}
-		console.warn(unparse_rel([c3]))
-		//*/
-		//		rev1(c)
-		
-		/*for (let i=1; i<c.length; i+=2) {
-			let seg = c[i]
-			if (seg instanceof SegA) {
-				let p1 = get(c,i-1)
-				let p2 = get(c,i+1)
-				let c1 = new Point(p1.x, p2.y)
-				let c2 = new Point(p2.x, p1.y)
-				console.log('center?', c1.fmt(), c2.fmt())
-			}
-		}*/
-		//rotate(c,-)
-		let ok
-		try {
-			
-			/*
-			  let d = to_rrect(c)
-			out += `${d}${attrs}>`
-			ok = true
-			console.warn('! ', d)//*/
-		} catch (e) {
-		}
-		if (!ok) {
-			let d = unparse_rel([c])
-			out += `<path d="${d}"${attrs}>`
-		}
-		//first = 0//!first
-	}
-	
-	
-	return out
-})
-print() 
-
-process.stdout.write(xml.replace(/></g, ">\n\t<")+"\n")
-//process.stdout.write(xml.replace(/Z"[^]*? d="/g, "Z ")+"\n")
 
 //<g transform="matrix(1 0 0 1  → <path d="M 
 /* )">
