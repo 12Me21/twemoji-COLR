@@ -313,29 +313,47 @@ class SegA extends Seg {
 	// todo: transform??
 	transform(matrix) {
 		// HACK
+		
 		if (matrix.angle!=null) {
 			this.angle += pnum(String(matrix.angle)) // hhh?
 			return
-		} else if (matrix.xy || matrix.yx) {
-			throw new Error('cant skew arc')
 		}
-		if (matrix.xx!=1 || matrix.yy!=1) {
-			if (this.angle==0 || this.radius.x==this.radius.y) {
-				this.radius.x *= matrix.xx
-				this.radius.y *= matrix.yy
-				
+		let {xx,yy} = matrix
+		let {x,y} = this.radius
+		let flip
+		if (matrix.xy || matrix.yx) {
+			if (xx || yy)
+				throw new Error('cant skew arc')
+			//simple flips
+			0,[xx,yy] = [matrix.yx,matrix.xy]
+			0,[x,y] = [y,x]
+			flip = true
+		}
+		if (xx!=1 || yy!=1 || flip) {
+			if (this.angle==0 || x==y) {
+				this.radius.x = x * xx
+				this.radius.y = y * yy
 			} else {
 				throw new Error('cant scale arc')
 			}
+		}
+		if (flip) {
+			this.sweep = !this.sweep
+			this.radius.x *= -1
+			this.radius.y *= -1
 		}
 	}
 }
 SegA.prototype.letter = "a"
 
 class Contour extends Array {
-	constructor() {
-		super()
+	constructor(x) {
+		if (x)
+			super(...x) // careful..
+		else
+			super()
 	}
+	static [Symbol.species] = function (...heck) { return new Contour(heck) }
 	get(i) {
 		let len = this.length
 		return this[(i % len + len) % len]
@@ -487,8 +505,8 @@ function to_rrect(c) {
 	
 	if (c.length==8 && c.every((x,i)=>i%2==0 || x instanceof SegL)) {
 		for (let s=0; s<c.length; s+=2) {
-			let p1 = get(c, s-2)
-			let p2 = get(c, s+2)
+			let p1 = c.get(s-2)
+			let p2 = c.get(s+2)
 			let d = new Point(p2.x-p1.x, p2.y-p1.y)
 			let nw
 			if (d.x < 0) {
@@ -524,8 +542,8 @@ function to_rrect(c) {
 	let rads = []
 	for (s=1; s<c.length; s+=2) {
 		if (c[s] instanceof SegA) {
-			let p1 = get(c, s-1)
-			let p2 = get(c, s+1)
+			let p1 = c.get(s-1)
+			let p2 = c.get(s+1)
 			let d = new Point(p2.x-p1.x, p2.y-p1.y)
 			let r = c[s].radius
 			if (Math.abs(Math.abs(d.x)-r.x) <= 0.001e5 && Math.abs(Math.abs(d.y)-r.y) <= 0.001e5) {
@@ -643,20 +661,20 @@ function to_rrect(c) {
 
 function solve_rrect_stroke(c) {
 	for (let i=1; i<c.length; i+=2) {
-		let seg = get(c,i)
+		let seg = c.get(i)
 		if (seg instanceof SegL) {
 			let i2 = i+3*2
-			let seg2 = get(c,i2)
+			let seg2 = c.get(i2)
 			if (!(seg2 instanceof SegL)) // try +4 in case we have an extra
-				seg2 = get(c,i2 += 2)
+				seg2 = c.get(i2 += 2)
 			if (seg2 instanceof SegL) {
-				console.warn('line',get(c, i-1),get(c, i-1))
-				let a = get(c, i-1)
-				let b = get(c,i2+1)
+				console.warn('line',c.get(i-1),c.get(i-1))
+				let a = c.get(i-1)
+				let b = c.get(i2+1)
 				let e1 = a.Middle(b)
 				let d1 = dist(a,b)
-				a = get(c, i+1)
-				b = get(c,i2-1)
+				a = c.get(i+1)
+				b = c.get(i2-1)
 				let e2 = a.Middle(b)
 				let d2 = dist(a,b)
 				return [e1, e2, d1,d2]
@@ -670,7 +688,7 @@ function check(c) {
 	for (let i=1; i<c.length; i+=2) {
 		let seg = c
 		let pp = c[i-1]
-		let np = get(c, i+1)
+		let np = c.get(i+1)
 		if (seg instanceof SegC) {
 			let o1 = orientation(pp,seg.c1,np)
 			let o2 = orientation(pp,seg.c2,np)
@@ -684,8 +702,8 @@ function check(c) {
 		}
 		if (pp.x==np.x && pp.y==np.y) {
 			console.warn('consecutive coincident points around '+seg)
-		} else if (seg instanceof SegL && get(c, i+2) instanceof SegL) {
-			let np2 = get(c, i+3)
+		} else if (seg instanceof SegL && c.get(i+2) instanceof SegL) {
+			let np2 = c.get(i+3)
 			let o1 = orientation(pp,np,np2)
 			if (o1==0)
 				console.warn('consecutive collinear line segments')
@@ -697,16 +715,11 @@ function check(c) {
 				i += 2
 			}
 			;
-			let diameter = dist(get(c,i-3), np)
+			let diameter = dist(c.get(i-3), np)
 			c.splice(i-2, 3, new SegA(new Point(diameter/2, diameter/2), 0, 0, 1))
 			i -= 2
 		}
 	}
-}
-
-function get(c, i) {
-	let l = c.length
-	return c[(i % l + l) % l]
 }
 
 function dist(p1, p2) {
@@ -714,15 +727,15 @@ function dist(p1, p2) {
 }
 
 function half_arc_at(c, i) {
-	let seg0 = get(c, i-1)
-	let seg1 = get(c, i+1)
+	let seg0 = c.get(i-1)
+	let seg1 = c.get(i+1)
 	
 	if (!(seg0 instanceof SegC && seg1 instanceof SegC))
 		return
 	
-	let p0 = get(c, i-2)
-	let p1 = get(c, i)
-	let p2 = get(c, i+2)
+	let p0 = c.get(i-2)
+	let p1 = c.get(i)
+	let p2 = c.get(i+2)
 	let d1 = new Point(p0.x-p1.x,p0.y-p1.y)
 	let d2 = new Point(p2.x-p1.x,p2.y-p1.y)
 	// eg: d1 is [68,235], d2 is [235,-70] or [-235,70]
@@ -781,7 +794,7 @@ function unparse_rel(contours) {
 			let seg = c[i]
 			let short
 			if (seg instanceof SegC) {
-				let pp = get(c, i-1)
+				let pp = c.get(i-1)
 				let pc = c[i-2] // do NOT use get()here, we need this to NOT wrap around
 				let d = seg.c1.Subtract(pp)
 				
@@ -804,7 +817,7 @@ function unparse_rel(contours) {
 						short = true
 				}
 			} else if (seg instanceof SegQ) {
-				let pp = get(c, i-1)
+				let pp = c.get(i-1)
 				let pc = c[i-2]
 				let d = seg.c.Subtract(pp)
 				
@@ -818,7 +831,7 @@ function unparse_rel(contours) {
 						short = true
 				}
 			}
-			let pos = get(c, i+1)
+			let pos = c.get(i+1)
 			if (seg instanceof SegGap) {
 				if (i==c.length-1)
 					continue outer
@@ -889,7 +902,7 @@ function unparse_abs(contours) {
 				console.error(seg)
 				throw new Error('what the heck is this segment? '+String(seg))
 			}
-			let pos = get(c, i+1)
+			let pos = c.get(i+1)
 			out += "\n"+pos.fmt()
 			prev = pos
 		}
@@ -927,14 +940,14 @@ function extrema(con, axis, sign) {
 function contour_orientation(con) {
 	let top = extrema(con, "y", -1)
 	
-	let a = get(con, top-2)
-	let b = get(con, top)
-	let c = get(con, top+2)
+	let a = con.get(top-2)
+	let b = con.get(top)
+	let c = con.get(top+2)
 	
 	if (a==c) {
 		console.warn("bad angle!")
-		let seg0 = get(con, top-1)
-		let seg1 = get(con, top+1)
+		let seg0 = con.get(top-1)
+		let seg1 = con.get(top+1)
 		if (seg0 instanceof SegC) {
 			if (!seg0.c2.equal(b))
 				a = seg0.c2
@@ -951,7 +964,7 @@ function contour_orientation(con) {
 	let o = orientation(a,b,c)
 	if (o==0) {
 		console.warn('bad angle! one last try..')
-		o = orientation(a,b,get(con, top+4))
+		o = orientation(a,b,con.get(top+4))
 	}
 	return o
 }
@@ -959,9 +972,9 @@ function contour_orientation(con) {
 function or(seg) {
 	let sl = seg.length-1
 	for (let i=0; i<sl; i+=2) {
-		let a = get(seg, i)
-		let b = get(seg, i+2)
-		let c = get(seg, i+4)
+		let a = seg.get(i)
+		let b = seg.get(i+2)
+		let c = seg.get(i+4)
 		let o = orientation(a,b,c)
 		//console.warn(o)
 	}
@@ -972,9 +985,9 @@ function toHex() {
 }
 
 /*function balance_cubic(c, i) {
-	let s1 = get(c, i-1)
-	let s2 = get(c, i+1)
-	let p = get(c, i)
+	let s1 = c.get(i-1)
+	let s2 = c.get(i+1)
+	let p = c.get(i)
 	let center = new Point(0, 0)
 	console.log(s1,s2,p)
 	center.add(s1.c2)
@@ -1056,8 +1069,8 @@ function rotate_until(c, fn) {
 /* SunriseOverMountains, FaceWithHeadBandage */
 function merge_lines(c) {
 	for (let i=0;i<c.length;i+=2) {
-		if (get(c,i-1) instanceof SegL && get(c,i+1) instanceof SegL) {
-			let det = orientation(get(c, i-2), get(c, i), get(c, i+2))
+		if (c.get(i-1) instanceof SegL && c.get(i+1) instanceof SegL) {
+			let det = orientation(c.get(i-2), c.get(i), c.get(i+2))
 			console.warn('det ', det)
 			if (Math.abs(det) < 100000) {
 				c.splice(i, 2)
@@ -1071,8 +1084,8 @@ function replace_corner_arcs(c) {
 	for (let i=1; i<c.length; i++) {
 		let seg = c[i]
 		if (seg instanceof SegC) {
-			let p1 = get(c,i-1)
-			let p2 = get(c,i+1)
+			let p1 = c.get(i-1)
+			let p2 = c.get(i+1)
 			let d = p2.Subtract(p1)
 			let c1d = seg.c1.Subtract(p1)
 			let c2d = seg.c2.Subtract(p2)
@@ -1102,8 +1115,8 @@ function replace_corner_arcs(c) {
 function short_to_arcs(c, rad) {
 	let rr = false
 	for (let i=1; i<c.length; i+=2) {
-		let seg = get(c,i)
-		let short = seg instanceof SegC && dist(get(c,i-1), get(c,i+1)) <= rad*1.5//2.1
+		let seg = c.get(i)
+		let short = seg instanceof SegC && dist(c.get(i-1), c.get(i+1)) <= rad*1.5//2.1
 		if (short) {
 			print('spliced arc', rr, i)
 			if (!rr) {
@@ -1118,7 +1131,7 @@ function short_to_arcs(c, rad) {
 		}
 	}
 	if (c[1] instanceof SegA) {
-		if (get(c,-1) instanceof SegA) {
+		if (c.get(-1) instanceof SegA) {
 			c.splice(0, 2)
 		}
 	}
@@ -1137,7 +1150,7 @@ function see_ellipse(c) {
 	let aang=0
 	for (let i=0; i<4; i+=2) {
 		let p1 = c[i]
-		let p2 = get(c, i+4)
+		let p2 = c.get(i+4)
 		let d = p2.Subtract(p1)
 		let ang = Math.atan2(d.x, d.y)*360/(Math.PI*2)
 		if (i>0) {
@@ -1175,11 +1188,11 @@ function see_ellipse(c) {
 function find_caps(c, radius) {
 	let cap_ends = []
 	for (let i=0; i<c.length; i+=2) {
-		let p1 = get(c,i)
+		let p1 = c.get(i)
 		let j
 		for (j=1; j<=3; j++) {
 			let i2 = i+j*2
-			let p2 = get(c,i2)
+			let p2 = c.get(i2)
 			let d = p1.dist(p2)
 //			console.log('checking', i, i2, d)
 			if (Math.abs(d-radius*2)<0.01e5)
@@ -1279,11 +1292,12 @@ while (args.length) {
 				let dist = (s[2]+s[3])/2
 				let path = new Contour([s[0], new SegL(), s[1], new SegGap()])
 				let elem = new Element('path')
-				elem.attrs.d = unparse_abs([path])
-				elem.attrs['stroke-width'] = dist.fmt()
+				elem.attrs.d = unparse_rel([path])
+				console.warn('width: '+dist.fmt())
+				/*elem.attrs['stroke-width'] = dist.fmt()
 				elem.attrs['stroke-linecap'] = 'round'
 				elem.attrs.fill = "none"				
-				elem.attrs.stroke = ""
+				elem.attrs.stroke = ""*/
 				elem.empty = true
 				//console.warn(elem.toString())
 				tag.parentNode.replaceChild(elem,tag)
@@ -1414,7 +1428,8 @@ let root = parse_xml(xml, tag=>{
 			delete tfa.transform
 		} else {
 			first = 1
-			/*let c3 = []
+			/*
+			let c3 = new Contour()
 			let [c1,c2] = cc
 			for (let i=0; i<c1.length; i+=2) {
 				c3[i] = c1[i].Middle(c2[i])
@@ -1439,13 +1454,15 @@ let root = parse_xml(xml, tag=>{
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
 				}
-				//transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0e5,y:0e5})
+				//transform(c, Matrix.Scale(1, 1/1.1463))
 				
 				/*//measure angles
 				for (let i=0;i<c.length;i+=2) {
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
-						let diff = get(c,i).Subtract(get(c,j))
+						let diff = c.get(i).Subtract(c.get(j))
+						console.warn(diff.fmt())
+						continue
 						let a = diff.atan()
 						if (a<0)
 							a += 360
@@ -1454,19 +1471,25 @@ let root = parse_xml(xml, tag=>{
 							a = 90-a
 						console.warn(a)
 					}
-					}//*/
-				/*transform(c, {xx:1,yy:1,xy:0,yx:0,x:-4.5e5,y:-31.5e5})
-				transform(c, Matrix.Rotate(-12))
+				}//*/
+				//*
+				/*
+				transform(c, {xx:1,yy:1,xy:0,yx:0,x:-36e5+0.00028e5,y:0e5})
+				transform(c, Matrix.Rotate(-45))
+				
 				for (let i=0;i<c.length;i+=2) {
 					let p = c[i]
 					let x = (p.x+100e5) % 1e5
 					let y = (p.y+100e5) % 1e5
 					console.log(x.fmt(), y.fmt())
-				}*/
+				}
 				
+				//transform(c, Matrix.Translate(0e5, -0.95765e5))
+				//*/
 				
-				//transform(c, Matrix.Translate(0e5,-1e5))
-				//transform(c, Matrix.Scale(1,1/0.8118))
+				//transform(c, {xx:-1,yy:1,xy:0,yx:0,x:0,y:0})
+				//transform(c, Matrix.Translate(36e5,0))
+				//transform(c, Matrix.Rotate(-90))
 				//short_to_arcs(c, 0.187e5)
 				//check(c)
 				
