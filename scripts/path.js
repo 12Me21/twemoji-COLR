@@ -7,6 +7,8 @@
 let print = console.warn
 print() 
 
+let rx_num = /[\s,]*([-+]?\d*(?:[.]\d+(?!\d)|\d(?![\d.]))(?:[Ee][-+]?\d+(?!\d))?)/g
+
 Number.prototype.fmt = function() { return fmt(this) }
 
 function fmt(num) {
@@ -120,14 +122,50 @@ class Matrix {
 			angle: a0,
 		}
 	}
+	translate(x, y) {
+		console.warn('tr', x, y, this.x, Matrix.prototype.x)
+		this.x += x
+		this.y += y
+	}
+	/*rotate(x, y) {
+		
+	}
+	scale(x, y) {
+		
+	}
+	matrix(a, b, c, d, e, f) {
+		
+	}*/
+	static *parse_trans(str) {
+		for (let [match,fname,args] of str.matchAll(/(?:^\s*)?(\w+)\s*[(]([^)]*)[)](?:[,\s]+(?!$)|\s*$)|[^]+/g)) {
+			if (!fname)
+				throw new Error('invalid transform: '+str)
+			args = args.replaceAll(',',' ').match(rx_num).map(x=>pnum(x)) // TEMP HACK!
+			yield [fname, args]
+		}
+	}
+	static SvgAttr(str) {
+		let mtx = {__proto__:Matrix.prototype}
+		for (let [fname, args] of this.parse_trans(str)) {
+			console.log(fname, args)
+			mtx[fname](...args)
+		}
+		return mtx
+	}
+	toString() {
+		return `⎡(${this.xx})x + (${this.yx})y + (${this.x.fmt()})⎤ → x
+⎣(${this.xy})x + (${this.yy})y + (${this.y.fmt()})⎦ → y`
+	}
+	static {
+		this.prototype.xx = 1
+		this.prototype.yy = 1
+		this.prototype.xy = 0
+		this.prototype.yx = 0
+		this.prototype.x = 0
+		this.prototype.y = 0
+		this.prototype.angle = null
+	}
 }
-Matrix.prototype.xx = 1
-Matrix.prototype.yy = 1
-Matrix.prototype.xy = 0
-Matrix.prototype.yx = 0
-Matrix.prototype.x = 0
-Matrix.prototype.y = 0
-Matrix.prototype.angle = null
 
 class Point {
 	constructor(x, y) {
@@ -175,9 +213,9 @@ class Point {
 		this.x = matrix.xx*x + matrix.yx*this.y + matrix.x
 		this.y = matrix.yy*this.y + matrix.xy*x + matrix.y
 	}
-	round(n) {
-		this.x = round(this.x, n)
-		this.y = round(this.y, n)
+	round(...a) {
+		this.x = round(this.x, ...a)
+		this.y = round(this.y, ...a)
 	}
 	equal(p) {
 		return this.x==p.x && this.y==p.y
@@ -257,9 +295,9 @@ class SegC extends Seg {
 		this.c1.transform(matrix)
 		this.c2.transform(matrix)
 	}
-	round() {
-		this.c1.round()
-		this.c2.round()
+	round(...a) {
+		this.c1.round(...a)
+		this.c2.round(...a)
 	}
 	Middle(seg) {
 		return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
@@ -289,8 +327,8 @@ class SegQ extends Seg {
 	transform(matrix) {
 		this.c.transform(matrix)
 	}
-	round() {
-		this.c.round()
+	round(...a) {
+		this.c.round(...a)
 	}
 }
 SegQ.prototype.letter = "q"
@@ -298,6 +336,10 @@ SegQ.prototype.letter = "q"
 class SegA extends Seg {
 	constructor(radius,angle=0,large=false,sweep=true) {
 		super()
+		// hmm.. what if the flags were encoded as the sign of the radius x and y? does this make sense? i feel like -x,-y should be counterclockwise and +x,+y should be clockwise. i'm not sure if there's any basis for like, +x,-y meaning clockwise+large, etc. though. but if we only encode the sweep flag as +/+ and -/-, then what do we do if we encounted mixed signs?
+		// or perhaps same sign = clockwise, differing = counterclockwise.. actually yeahh.. encoding the large flag in the radius doesnt make sense i think. but cw/ccw does, because then transforms are nicer.
+		// e.g. if a transform flips one axis, then we need to flip the sweep flag (because clockwise/counterclockwise are reversed then). so i.e. a clockwise arc w/ radius (2,2) would become radius (-2,2) when the x coord is inverted. and that would be counterclockwise. then if the other axis is flipped, we get (-2,-2) which is clockwise again.
+		// however, this is still kinda awkward, since it means there are 2 redundant cases which will appear. perhaps it's best to just avoid negative radius entirely. i.e. after a transform we just do: if (this.radius.x<0) this.radius.x *= -1, this.sweep = !this.sweep; and then the same for y (note that both can be negative in which case the sweep is flipped twice)
 		this.radius = radius
 		this.angle = angle
 		this.large = large
@@ -306,9 +348,9 @@ class SegA extends Seg {
 	reverse() {
 		this.sweep = !this.sweep
 	}
-	round() {
-		this.angle = round(this.angle)
-		this.radius.round()
+	round(...a) {
+		this.angle = round(this.angle, ...a)
+		this.radius.round(...a)
 	}
 	// todo: transform??
 	transform(matrix) {
@@ -358,9 +400,17 @@ class Contour extends Array {
 		let len = this.length
 		return this[(i % len + len) % len]
 	}
+	round(...a) {
+		for (let x of this)
+			x.round(...a)
+	}
+	transform(matrix) {
+		print(' ! transform', matrix)
+		// todo: what if matrix was just stored like [scale, skew, translate]. i.e. {xx,yy}, {yx,xy}, {wx,wy}. as 3 Points
+		for (let x of this)
+			x.transform(matrix)
+	}
 }
-
-let rx_num = /[\s,]*([-+]?\d*(?:[.]\d+(?!\d)|\d(?![\d.]))(?:[Ee][-+]?\d+(?!\d))?)/
 
 let rx_x = new RegExp(rx_num.source+"(){0}", 'y')
 let rx_y = new RegExp("(){0}"+rx_num.source, 'y')
@@ -544,9 +594,9 @@ function to_rrect(c) {
 		if (c[s] instanceof SegA) {
 			let p1 = c.get(s-1)
 			let p2 = c.get(s+1)
-			let d = new Point(p2.x-p1.x, p2.y-p1.y)
+			let d = p2.Subtract(p1)
 			let r = c[s].radius
-			if (Math.abs(Math.abs(d.x)-r.x) <= 0.001e5 && Math.abs(Math.abs(d.y)-r.y) <= 0.001e5) {
+			if (Math.abs(Math.abs(d.x)-Math.abs(r.x)) <= 0.001e5 && Math.abs(Math.abs(d.y)-Math.abs(r.y)) <= 0.001e5) {
 			// found corner
 				rads.push(new Point(Math.abs(d.x),Math.abs(d.y)))
 				//console.warn("corner", d)
@@ -580,10 +630,10 @@ function to_rrect(c) {
 		if (dist(rr, r) >= 400)
 			throw new Error('bad corners')
 	}
-	let x = corners.topleft.x
-	let y = corners.topleft.y
-	let w = corners.bottomright.x - x
-	let h = corners.bottomright.y - y
+	let x = (corners.topleft.x+corners.bottomleft.x)/2
+	let y = (corners.topleft.y+corners.topright.y)/2
+	let w = (corners.bottomright.x+corners.topright.x)/2 - x
+	let h = (corners.bottomright.y+corners.bottomleft.y)/2 - y
 	//console.warn("corners", corners, rads)
 	if (corners.topleft.x != corners.bottomleft.x || corners.topright.x != corners.bottomright.x || corners.topleft.y != corners.topright.y || corners.bottomleft.y != corners.bottomright.y) {
 		throw new Error('not rectangle')
@@ -754,19 +804,6 @@ function half_arc_at(c, i) {
 			return true
 		}
 	}
-}
-
-function transform(c, matrix) {
-	print(' ! transform', matrix)
-	// todo: what if matrix was just stored like [scale, skew, translate]. i.e. {xx,yy}, {yx,xy}, {wx,wy}. as 3 Points
-	for (let x of c) {
-		x.transform(matrix)
-	}
-}
-
-function round_contour(c, matrix) {
-	for (let x of c)
-		x.round()
 }
 
 function rotate_to_gap(c) {
@@ -1257,6 +1294,15 @@ class Element {
 		this.childs.push(child)
 		child.parentNode = this
 	}
+	insertBefore(child, ref) {
+		let i = ref==null ? this.childs.length : this.childs.indexOf(ref)
+		if (i<0) throw new Error('not child of')
+		
+		if (child.parentNode)
+			child.parentNode.removeChild(child)
+		this.childs.splice(i, 0, child)
+		child.parentNode = this
+	}
 }
 class Root extends Element {
 	constructor() {
@@ -1269,11 +1315,8 @@ class Root extends Element {
 
 /*
 let sz = make_star(14.21444e5-1.66666e5, 11.92836e5-2e5, 12)
-round_contour(sz)
 console.log(unparse_rel([sz]))
 //*/
-
-let first = true
 
 let OPT = {__proto__:null}
 let [ , , xml, ...args] = process.argv
@@ -1310,6 +1353,9 @@ while (args.length) {
 	else if (cmd=='abs') {
 		OPT.abs = true
 	}
+	else if (cmd=='split') {
+		OPT.split = true
+	}
 	else if (cmd=='rev') {
 		commands.push(c=>{rev1(c)})
 	}
@@ -1332,7 +1378,6 @@ while (args.length) {
 			elem.empty = true
 			if (tag.attrs.fill)
 				elem.attrs.fill = tag.attrs.fill
-			console.warn(elem.toString())
 			tag.parentNode.replaceChild(elem,tag)
 		})
 	} else if (cmd=='corner-arcs') {
@@ -1350,6 +1395,8 @@ let defstyle = {
 	'fill-rule':'nonzero',
 	'stroke':'none',
 }
+
+let angles = []
 
 let root = parse_xml(xml, tag=>{
 	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
@@ -1427,7 +1474,7 @@ let root = parse_xml(xml, tag=>{
 			}
 			delete tfa.transform
 		} else {
-			first = 1
+			let first = 1
 			/*
 			let c3 = new Contour()
 			let [c1,c2] = cc
@@ -1444,6 +1491,8 @@ let root = parse_xml(xml, tag=>{
 						i-=2
 					}
 				}
+				if (OPT.split)
+					first = true
 				if (!c.some(x=>x instanceof SegGap)) {
 					let orient = contour_orientation(c)
 					print('PATH!','len '+c.length+', 🔃 '+orient)
@@ -1454,8 +1503,42 @@ let root = parse_xml(xml, tag=>{
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
 				}
-				//transform(c, Matrix.Scale(1, 1/1.1463))
 				
+				/*
+				for (let i=0;i<c.length;i+=2) {
+					let point = c.get(i)
+					let prev = c.get(i-1)
+					let next = c.get(i+1)
+					let d1,d2
+					if (prev instanceof SegC) {
+						let p = prev.c2
+						d1 = p.Subtract(point)
+					}
+					if (next instanceof SegC) {
+						let n = next.c1
+						d2 = point.Subtract(n)
+					}
+					console.warn(d1?.fmt(), d2?.fmt())
+					let diff = c.get(i).Subtract(c.get(i))
+				}
+				//*/
+				/*
+				let avg = new Point(0,0)
+				let avgc = 0
+				for (let i=0; i<c.length; i+=2) {
+					avg = avg.Add(c[i])
+					avgc++
+				}
+				avg = avg.Divide(avgc)
+				avg = avg.Subtract(new Point(18e5,18e5))
+				avg.transform(Matrix.Rotate(45))
+				console.warn('average point:', avg.fmt())
+				*/
+				
+
+				/*c.transform(Matrix.Rotate(45))
+				c.transform(Matrix.Scale(1/0.9962))
+				c.transform(Matrix.Translate(-0.09549e5,0))*/
 				/*//measure angles
 				for (let i=0;i<c.length;i+=2) {
 					for (let j=0;j<c.length;j+=2) {
@@ -1469,29 +1552,42 @@ let root = parse_xml(xml, tag=>{
 						a = a % 90
 						if (a>45)
 							a = 90-a
-						console.warn(a)
+						angles.push(a)
+						//console.warn(a)
 					}
 				}//*/
-				//*
-				/*
-				transform(c, {xx:1,yy:1,xy:0,yx:0,x:-36e5+0.00028e5,y:0e5})
-				transform(c, Matrix.Rotate(-45))
-				
 				for (let i=0;i<c.length;i+=2) {
 					let p = c[i]
 					let x = (p.x+100e5) % 1e5
 					let y = (p.y+100e5) % 1e5
 					console.log(x.fmt(), y.fmt())
 				}
-				
-				//transform(c, Matrix.Translate(0e5, -0.95765e5))
+				//transform(c, Matrix.Translate(-0.36018e5, -0.15266e5))
 				//*/
 				
-				//transform(c, {xx:-1,yy:1,xy:0,yx:0,x:0,y:0})
+				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:0})
 				//transform(c, Matrix.Translate(36e5,0))
 				//transform(c, Matrix.Rotate(-90))
-				//short_to_arcs(c, 0.187e5)
+				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
+				
+/*				c.splice(0, 2)
+				let nw=new Contour()
+				{
+					//c[i].radius = new Point(0.75e5,0.75e5)
+					let i=0
+					let l = c.get(i)
+					let r = c.get(i-2)
+					let mid = l.Middle(r)
+					l = c.get(i+1)
+					r = c.get(i-3)
+					let mid2 = new SegA(l.radius.Middle(r.radius))
+					l = c.get(i+2)
+					r = c.get(i-4)
+					let mid3 = l.Middle(r)
+					nw.push(mid, mid2, mid3, new SegGap())
+				}
+				c = nw*/
 				
 				/*let lens = []
 				let center = new Point(17.875e5,13.875e5)
@@ -1521,8 +1617,8 @@ let h = c[4].Subtract(c[0])
 				c.splice(-3, 3, new SegL())*/
 				//merge_lines(c)
 				//transform(c, Matrix.Scale(-1,1))
-				//transform(c, Matrix.Translate(36e5,0))
-				//round_contour(c)
+				//transform(c, Matrix.Translate(-36e5,0))
+				//c.round(100)
 				
 				//check(c)
 				
@@ -1530,19 +1626,31 @@ let h = c[4].Subtract(c[0])
 					cmd(c, tag)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
-				//round_contour(c)
+				if (OPT.split) {
+					if (d) {
+						let tag2 = new Element(tag.name)
+						Object.assign(tag2.attrs, tag.attrs)
+						tag2.attrs.d = d
+						tag2.empty = tag.empty
+						d = ""
+						tag.parentNode.insertBefore(tag2, tag)
+					}
+				}
+					
 				if (OPT.abs)
 					d += unparse_abs([c])
 				else
 					d += unparse_rel([c])
 				// TODO! we need to round the absolute coordinates BEFORE converting to relative, not after!!
-				
 				first = 0
 			}//*/
 		}
 		tag.attrs.d = d
 	}
 })
+//angles = angles.filter(x=>x<1)
+//angles.sort((a,b)=>b-a)
+//let avga = angles.reduce((a,x)=>a+x,0)/angles.length
 
 if (OPT.unflip) {
 	function cleanup(node) {
@@ -1686,7 +1794,51 @@ i guess it doesnt even need to really inherit, it can just copy, in reality, but
 // \.499[0-9]*\|\.500[0-9]* → .5
 // \([0-9]*\)\.99[89][0-9]* → \,(1+ (string-to-number \1))
 // \.00[01][0-9]* → 
+// [0-9]*\.99[89][0-9]*\|[0-9]*\.00[01][0-9]* → \,(round (string-to-number \&))
 
 // favicon: old microscope emoji
 
  cors
+
+/*
+0.0:	0
+0.5:	0.27615
+1.0:	0.5523
+1.5:	0.82845
+2.0:	1.1046
+2.5:	1.38075
+3.0:	1.6569
+3.5:	1.93305
+4.0:	2.2092
+4.5:	2.48535
+5.0:	2.7615
+5.5:	3.03765
+6.0:	3.3138
+6.5:	3.58995
+7.0:	3.8661
+7.5:	4.14225
+8.0:	4.4184
+8.5:	4.69455
+9.0:	4.9707
+9.5:	5.24685
+10.0:	5.523
+10.5:	5.79915
+11.0:	6.0753
+11.5:	6.35145
+12.0:	6.6276
+12.5:	6.90375
+13.0:	7.1799
+13.5:	7.45605
+14.0:	7.7322
+14.5:	8.00835
+15.0:	8.2845
+15.5:	8.56065
+16.0:	8.8368
+16.5:	9.11295
+17.0:	9.3891
+17.5:	9.66525
+18.0:	9.9414
+18.5:	10.21755
+19.0:	10.4937
+19.5:	10.76985
+*/
