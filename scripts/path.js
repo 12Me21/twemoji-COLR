@@ -992,10 +992,10 @@ function contour_orientation(con) {
 				a = seg0.c1
 		}
 		if (seg1 instanceof SegC) {
-			if (!seg0.c1.equal(b))
-				c = seg0.c1
-			else if (!seg0.c2.equal(b))
-				c = seg0.c2
+			if (!seg1.c1.equal(b))
+				c = seg1.c1
+			else if (!seg1.c2.equal(b))
+				c = seg1.c2
 		}
 	}
 	let o = orientation(a,b,c)
@@ -1467,9 +1467,9 @@ let root = parse_xml(xml, tag=>{
 			cc.reverse()
 			for (let c of cc) {
 				if (OPT.unflip!=3)
-					transform(c, {xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
+					c.transform({xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
 				if (x||y)
-					transform(c, Matrix.Translate(x,y))
+					c.transform(Matrix.Translate(x,y))
 				d += unparse_rel([c])
 			}
 			delete tfa.transform
@@ -1535,28 +1535,52 @@ let root = parse_xml(xml, tag=>{
 				console.warn('average point:', avg.fmt())
 				*/
 				
-
-				/*c.transform(Matrix.Rotate(45))
-				c.transform(Matrix.Scale(1/0.9962))
-				c.transform(Matrix.Translate(-0.09549e5,0))*/
+				/*for (let i=0; i<c.length; i++) {
+					let seg = c.get(i)
+					if (seg instanceof SegA) {
+						let r = seg.radius
+						let p1 = c.get(i-1)
+						let p2 = c.get(i+1)
+						let c1 = new Point(p1.x,p2.y)
+						let c2 = new Point(p2.x,p1.y)
+						console.warn('circle?', r.fmt(), c1.fmt(), c2.fmt())
+					}
+				}*/
+				//c.transform(Matrix.Scale(1,-1))
+				/*c.transform(Matrix.Rotate(-45))
+				c.transform(Matrix.Scale(0.647867,0.851167))
+				/*c.transform(Matrix.Translate(-0.09549e5,0))*/
 				/*//measure angles
+				function p_angle(diff) {
+					let a = diff.atan()
+					if (a<0)
+						a += 360
+					a = a % 90
+					if (a>45)
+						a = 90-a
+					console.warn(a)
+				}
 				for (let i=0;i<c.length;i+=2) {
+					let seg = c.get(i+1)
+					if (seg instanceof SegC) {
+						p_angle(seg.c1.Subtract(c.get(i)))
+						p_angle(seg.c2.Subtract(c.get(i+2)))
+					}
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
 						let diff = c.get(i).Subtract(c.get(j))
-						console.warn(diff.fmt())
+						let y = 7/4.041*diff.y
+						let ry = round(y, 1e5)
+						if (Math.abs(y-ry) < 0.1e5) {
+							console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
+						}
+						
+						//console.warn('dist', diff.hypot().fmt())
 						continue
-						let a = diff.atan()
-						if (a<0)
-							a += 360
-						a = a % 90
-						if (a>45)
-							a = 90-a
-						angles.push(a)
-						//console.warn(a)
+						p_angle(diff)
 					}
 				}//*/
-				for (let i=0;i<c.length;i+=2) {
+				/*for (let i=0;i<c.length;i+=2) {
 					let p = c[i]
 					let x = (p.x+100e5) % 1e5
 					let y = (p.y+100e5) % 1e5
@@ -1566,8 +1590,8 @@ let root = parse_xml(xml, tag=>{
 				//*/
 				
 				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:0})
-				//transform(c, Matrix.Translate(36e5,0))
-				//transform(c, Matrix.Rotate(-90))
+/*				c.transform(Matrix.Scale(1, 1.729))
+				c.transform(Matrix.Rotate(45))*/
 				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
 				
