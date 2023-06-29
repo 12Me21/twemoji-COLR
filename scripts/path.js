@@ -67,11 +67,33 @@ function round(x, n=dr) {
 }*/
 
 class Matrix {
+	scale(s) {
+		this.xx *= s
+		this.yy *= s
+		this.xy *= s
+		this.yx *= s
+		this.x *= s
+		this.y *= s
+	}
 	static Scale(xx, yy=xx) {
 		return {__proto__:Matrix.prototype, xx, yy}
 	}
 	static Translate(x, y=x) {
 		return {__proto__:Matrix.prototype, x, y}
+	}
+	static transRot(thing, center, angle) {
+		thing.transform(this.Translate(-center.x, -center.y))
+		thing.transform(this.Rotate(angle))
+	}
+	static Rotate2(diff, d1, d2) {
+		let h = diff.hypot()
+		let sin = -diff.y*d2/d1**2/1e5
+		let cos = diff.x*d2/d1**2/1e5
+		return {
+			__proto__:Matrix.prototype,
+			xx: cos,	yy: cos,
+			yx: -sin, xy: sin,
+		}
 	}
 	static Rotate(a) {
 		let a0 = a
@@ -206,7 +228,9 @@ class Point {
 		return new Point(this.x*s, this.y*s)
 	}
 	static Parse(x, y, pos) {
-		return new this(pos.x+pnum(x), pos.y+pnum(y))
+		if (pos)
+			return new this(pos.x+pnum(x), pos.y+pnum(y))
+		return new this(pnum(x), pnum(y))
 	}
 	transform(matrix) {
 		let x = this.x
@@ -225,6 +249,9 @@ class Point {
 	}
 	atan() {
 		return Math.atan2(this.y, this.x)*(180/Math.PI)
+	}
+	atanr() {
+		return Math.atan2(this.y, this.x)
 	}
 	dist(p) {
 		return Math.hypot(p.x-this.x, p.y-this.y)
@@ -1382,6 +1409,8 @@ while (args.length) {
 		})
 	} else if (cmd=='corner-arcs') {
 		commands.push(c=>{replace_corner_arcs(c)})
+	} else if (cmd=='fix-color') {
+		OPT.fixcolor = true
 	} else {
 		throw new Error('unknown command: '+cmd)
 	}
@@ -1397,6 +1426,46 @@ let defstyle = {
 }
 
 let angles = []
+
+let BAD_COLORS = {
+	'#642116': '#662113',
+	'#bf6952': '#c1694f',
+	'#d79e84': '#d99e82',
+	'#e4aaab': '#e6aaaa',
+	
+	'#67757f': '#66757f',
+	'#9aaab4': '#99aab5',
+	
+	'#553986': '#553788',
+	'#7450a8': '#744eaa',
+	'#9268ca': '#9266cc',
+	'#aa8ed6': '#aa8dd8',
+	'#cbb8e9': '#cbb7ea',
+	
+	'#9d0522': '#a0041e',
+	'#bb1a34': '#be1931',
+	'#da2f47': '#dd2e44',
+	'#e75a70': '#ea596e',
+	'#f2abba': '#f4abba',
+	
+	'#3f7123': '#3e721d',
+	'#5d9040': '#5c913b',
+	'#78b159': '#77b255',
+	'#a7d28b': '#a6d388',
+	'#c6e4b5': '#c6e5b3',
+	
+	'#f18f26': '#f4900c',
+	'#fcab40': '#ffac33',
+	'#fdcb58': '#ffcc4d',
+	'#fdd888': '#ffd983',
+	'#fee7b8': '#ffe8b6',
+	
+	'#2a6797': '#226699',
+	'#4289c1': '#3b88c3',
+	'#5dadec': '#55acee',
+	'#8ccaf7': '#88c9f9',
+	'#bdddf4': '#bbddf5',
+}
 
 let root = parse_xml(xml, tag=>{
 	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
@@ -1425,14 +1494,29 @@ let root = parse_xml(xml, tag=>{
 		}
 	}
 	
+	if (OPT.fixcolor && tag.attrs.fill) {
+		let fix = BAD_COLORS[tag.attrs.fill.toLowerCase()]
+		if (fix) {
+			print('fixed color',tag.attrs.fill,'→',fix)
+			tag.attrs.fill = fix
+		}
+	}
+	
 	let fc = true && !OPT.unflip
 	
-/*	if (tag.name=='circle') {
+	/*if (tag.name=='circle') {
 		let p = new Point(pnum(tag.attrs.cx), pnum(tag.attrs.cy))
-		p.transform({xx:1,yy:1,xy:0,yx:0,x:-0.75e5,y:-36e5})
-		p.transform(Matrix.Rotate(45))
+		let r = new Point(pnum(tag.attrs.r), 0)
+		p.transform(Matrix.Translate(-0.0469e5,0.0469e5))
+		//p.transform(Matrix.Scale(26/27.161))
+		//r.transform(Matrix.Rotate(-8.74984))
+		//r.transform(Matrix.Scale(26/27.161))
+		
+		//p.transform({xx:1,yy:1,xy:0,yx:0,x:-0.75e5,y:-36e5})
+		//p.transform(Matrix.Rotate(45))
 		tag.attrs.cx = p.x.fmt()
 		tag.attrs.cy = p.y.fmt()
+		tag.attrs.r = r.x.fmt()
 	}*/
 	
 	if (tag.name=='path') {
@@ -1483,10 +1567,14 @@ let root = parse_xml(xml, tag=>{
 				c3[i+1] = c1[i+1].Middle(c2[i+1])
 			}
 			cc.push(c3)//*/
+			
 			for (let c of cc) {
-				for (let i=0; i<c.length-2; i+=2) {
-					if (c[i].equal(c[i+2])) {
-						console.warn("🔩 zero length segment: ", c[i+1])
+				for (let i=0; i<c.length; i+=2) {
+					if (c.get(i).equal(c.get(i+2))) {
+						let seg = c.get(i+1)
+						if (seg instanceof SegGap)
+							continue
+						console.warn("🔩 zero length segment: ", seg)
 						c.splice(i, 2)
 						i-=2
 					}
@@ -1498,7 +1586,6 @@ let root = parse_xml(xml, tag=>{
 					print('PATH!','len '+c.length+', 🔃 '+orient)
 					
 					//console.warn(orient, unparse_rel([c]))
-					
 					if (first ? (orient < 0) : (orient > 0)) {
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
@@ -1522,7 +1609,18 @@ let root = parse_xml(xml, tag=>{
 					let diff = c.get(i).Subtract(c.get(i))
 				}
 				//*/
-				/*
+				//c.transform(Matrix.Translate(-0.00141e5,0))
+				
+				//Matrix.transRot(c, new Point(3.854e5, 32.146e5), -45)
+				//c.transform(Matrix.Translate(0,15e5))				
+				/*c.transform(Matrix.Scale(0.647867,0.851167))*/
+				
+				//c.transform(Matrix.Scale(0.93194))
+				
+				//c.transform(Matrix.Rotate(30.578))
+				
+				
+				//*
 				let avg = new Point(0,0)
 				let avgc = 0
 				for (let i=0; i<c.length; i+=2) {
@@ -1530,10 +1628,10 @@ let root = parse_xml(xml, tag=>{
 					avgc++
 				}
 				avg = avg.Divide(avgc)
-				avg = avg.Subtract(new Point(18e5,18e5))
-				avg.transform(Matrix.Rotate(45))
+				//avg = avg.Subtract(new Point(18e5,18e5))
+				//avg.transform(Matrix.Rotate(45))
 				console.warn('average point:', avg.fmt())
-				*/
+				//*/
 				
 				/*for (let i=0; i<c.length; i++) {
 					let seg = c.get(i)
@@ -1545,12 +1643,14 @@ let root = parse_xml(xml, tag=>{
 						let c2 = new Point(p2.x,p1.y)
 						console.warn('circle?', r.fmt(), c1.fmt(), c2.fmt())
 					}
-				}*/
-				//c.transform(Matrix.Scale(1,-1))
-				/*c.transform(Matrix.Rotate(-45))
-				c.transform(Matrix.Scale(0.647867,0.851167))
-				/*c.transform(Matrix.Translate(-0.09549e5,0))*/
-				/*//measure angles
+					}*/
+				/*c.transform(Matrix.Translate(-36e5,0))
+				let m = Matrix.Rotate(-45)
+				c.transform(m)*/
+			//	c.transform(Matrix.Scale(19/21.42463))
+				//
+				
+				//*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
 					if (a<0)
@@ -1560,27 +1660,34 @@ let root = parse_xml(xml, tag=>{
 						a = 90-a
 					console.warn(a)
 				}
-				for (let i=0;i<c.length;i+=2) {
+				both: for (let i=0;i<c.length;i+=2) {
 					let seg = c.get(i+1)
-					if (seg instanceof SegC) {
+					if (0 && seg instanceof SegC) {
 						p_angle(seg.c1.Subtract(c.get(i)))
 						p_angle(seg.c2.Subtract(c.get(i+2)))
 					}
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
 						let diff = c.get(i).Subtract(c.get(j))
-						let y = 7/4.041*diff.y
-						let ry = round(y, 1e5)
-						if (Math.abs(y-ry) < 0.1e5) {
-							console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
-						}
 						
-						//console.warn('dist', diff.hypot().fmt())
+						//let y = 7/4.041*diff.y
+						//let ry = round(y, 1e5)
+						//if (Math.abs(y-ry) < 0.1e5) {
+						//	console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
+						//}
+						console.warn('dist', diff.hypot().fmt(), diff.fmt())
+						p_angle(diff)
+						//c.transform(Matrix.Rotate2(diff, 27.161, 26))
 						continue
 						p_angle(diff)
 					}
 				}//*/
-				/*for (let i=0;i<c.length;i+=2) {
+				
+				/*c.transform(Matrix.Translate(-8.3805e5,-18.292e5))
+				c.transform(Matrix.Rotate(6.511))
+				c.transform(Matrix.Scale(26/27.161))*/
+				/*
+				for (let i=0;i<c.length;i+=2) {
 					let p = c[i]
 					let x = (p.x+100e5) % 1e5
 					let y = (p.y+100e5) % 1e5
@@ -1590,8 +1697,8 @@ let root = parse_xml(xml, tag=>{
 				//*/
 				
 				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:0})
-/*				c.transform(Matrix.Scale(1, 1.729))
-				c.transform(Matrix.Rotate(45))*/
+				//c.transform(Matrix.Scale(1, 1.729))
+				
 				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
 				
@@ -1645,7 +1752,6 @@ let h = c[4].Subtract(c[0])
 				//c.round(100)
 				
 				//check(c)
-				
 				for (let cmd of commands)
 					cmd(c, tag)
 				
@@ -1667,7 +1773,43 @@ let h = c[4].Subtract(c[0])
 					d += unparse_rel([c])
 				// TODO! we need to round the absolute coordinates BEFORE converting to relative, not after!!
 				first = 0
-			}//*/
+			}
+			/*/
+			let c1 = cc[0]
+			for (let i=0; i<c1.length; i+=2) {
+				let avg = new Point(0,0)
+				let avgc = 0
+				for (let c of cc) {
+					avg = avg.Add(c[i])
+					avgc++
+				}
+				avg = avg.Divide(avgc)
+				c1[i] = avg
+				let seg = c1.get(i+1)
+				if (seg instanceof SegC) {
+					let avg = new Point(0,0)
+					let avgc = 0
+					for (let c of cc) {
+						avg = avg.Add(c.get(i+1).c1)
+						avgc++
+					}
+					avg = avg.Divide(avgc)
+					c1[i+1].c1 = avg
+				}
+				if (seg instanceof SegC) {
+					let avg = new Point(0,0)
+					let avgc = 0
+					for (let c of cc) {
+						avg = avg.Add(c.get(i+1).c2)
+						avgc++
+					}
+					avg = avg.Divide(avgc)
+					c1[i+1].c2 = avg
+				}
+			//avg = avg.Subtract(new Point(18e5,18e5))
+			//avg.transform(Matrix.Rotate(45))
+			}
+			d = unparse_abs([c1])//*/
 		}
 		tag.attrs.d = d
 	}
