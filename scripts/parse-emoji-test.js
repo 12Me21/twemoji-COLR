@@ -8,7 +8,7 @@ let map = new Map()
 let numbers = {
 	__proto__: 'Zero One Two Three Four Five Six Seven Eight Nine Ten'.split(" "),
 	'*':'asterisk','&':'and','#':'number sign',
-	ñ:'n',Å:'A',é:'e',ô:'o',ç:'c',é:'e',ã:'a',é:'e',í:'i',
+	ñ:'n',Å:'A',é:'e',ô:'o',ç:'c',é:'e',ã:'a',é:'e',í:'i',ü:'u',
 	'.':"",'(':"",')':"",'’':"",'“':"",'”':"",'!':"",
 }
 

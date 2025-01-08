@@ -94,7 +94,10 @@ export function process_svg(filename) {
 		}
 		currentPath[0].push(shape)
 	}
+	let inDefs = false
 	function open(name, attrs) {
+		if (inDefs)
+			return
 		let fill
 		let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
 		if ('fill' in attrs) {
@@ -142,15 +145,22 @@ export function process_svg(filename) {
 			//
 		} else if (name=="svg") {
 			if (attrs.viewBox!="0 0 36 36")
-				throw new Error("bad svg size: "+attrs.viewBox)
+				throw new Error("bad svg size: "+attrs.viewBox+"  in "+filename)
+		} else if (name=="defs") {
+			inDefs = true
+			console.warn("found <defs> in "+filename)
 		} else {
-			throw new Error('unknown shape: <'+name+">")
+			throw new Error('unknown shape: <'+name+"> in "+filename)
 		}
 		//console.warn('opened', name)
 		fillColors.push(fillColor)
 		fillColor = fill
 	}
 	function close(name) {
+		if (name=="defs" && inDefs) {
+			inDefs = false
+			return
+		}
 		fillColor = fillColors.pop()
 		//console.warn('closed', name)
 	}

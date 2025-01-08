@@ -5,8 +5,19 @@ import sys
 import json
 
 glyphList = json.load(sys.stdin)
-size = 720
-descent = round(size*3/18)
+
+SCALE = 24 # upscale factor for svg units
+VIEWBOX = 36 # viewbox of twemoji svgs
+WATERLINE = 8 # how far up the baseline should be (in svg units)
+MARGIN = 1 # left/right bearing, in svg units
+# basic font metrics
+EM = 32 * SCALE
+ASCENT = round(0.8 * SCALE)
+DESCENT = EM - ASCENT
+WIDTH = (MARGIN+VIEWBOX+MARGIN) * SCALE
+
+# transform to apply to imported svg files
+IMPORT_TRANSFORM = [SCALE,0,0,SCALE,MARGIN*SCALE,-(ASCENT-VIEWBOX)*SCALE - WATERLINE*SCALE]
 
 f = fontforge.font()
 f.encoding = 'UnicodeFull'
@@ -17,14 +28,30 @@ f.familyname = "Twitter Color Emoji"
 f.fullname = "Twitter Color Emoji"
 f.os2_vendor = "12;;"
 
-f.em = size
-f.descent = descent
-f.ascent = size-descent
+f.em = EM
+f.descent = DESCENT
+f.ascent = ASCENT
+f.upos = -108 # idk ?? nothing uses this anyway
+f.uwidth = 2 * SCALE
 
-#f.os2_typoascent = f.ascent
-#f.os2_typodescent = f.descent
-#f.hhea_ascent = f.ascent
-#f.hhea_descent = f.descent
+f.os2_winascent_add = False
+f.os2_windescent_add = False
+f.os2_typoascent_add = False
+f.os2_typodescent_add = False
+f.hhea_ascent_add = False
+f.hhea_descent_add = False
+
+f.os2_winascent = (VIEWBOX-WATERLINE)*SCALE + SCALE
+f.os2_windescent = (WATERLINE)*SCALE + SCALE
+f.os2_typoascent = round(712/768*EM) # idr how i calculated these, but i did
+f.os2_typodescent = round(-188/768*EM)
+f.os2_typolinegap = 0
+f.hhea_ascent = f.os2_typoascent
+f.hhea_descent = f.os2_typodescent
+f.hhea_linegap = 0
+
+f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
+f.os2_family_class = 3072
 
 guessed_gids = [[],[],[]]
 
@@ -46,17 +73,18 @@ def create_unicode(cp, vs16):
 	if cp==0x200D or cp==0x20E3 or cp==0xFE0F or cp>=0xE0000:
 		glyph.width = 0
 	else:
-		glyph.width = size
+		glyph.width = WIDTH
 
 def create_ligature(codes):
 	glyph = f.createChar(-1, lname(codes))
 	glyph.addPosSub('depth', [gname(c) for c in codes])
-	glyph.width = size
+	glyph.width = WIDTH
 
 def create_layer(name, shapecount):
 	glyph = f.createChar(-1, name)
 	for i in range(0, shapecount):
-		glyph.importOutlines('build/layers/'+name+"_"+str(i)+".svg", simplify=False, correctdir=True)
+		glyph.importOutlines('build/layers/'+name+"_"+str(i)+".svg", simplify=False, correctdir=True, scale=False)
+	glyph.transform(IMPORT_TRANSFORM)
 	glyph.removeOverlap()
 	glyph.correctDirection()
 	glyph.simplify(0.5, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
@@ -64,7 +92,7 @@ def create_layer(name, shapecount):
 	glyph.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
 	glyph.canonicalContours()
 	glyph.canonicalStart()
-	glyph.width = size
+	glyph.width = WIDTH
 
 for g in glyphList:
 	name = str(g['glyphName'])

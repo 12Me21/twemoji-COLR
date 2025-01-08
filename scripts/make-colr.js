@@ -64,7 +64,7 @@ w.done('ttFont')
 w.finish()
 
 
-import glyphs from '../build/glyphs.json' assert {type:'json'}
+import glyphs from '../build/glyphs.json' with {type:'json'}
 
 w = new XmlWriter('build/hmtx.ttx')
 
