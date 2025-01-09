@@ -3,7 +3,7 @@
 # Shibuya
 E50A                                                   ; fully-qualified     #  E0.0 Shibuya
 
-# Skier skin color variations
+# Skier skin color variants
 26F7 1F3FB                                             ; fully-qualified     # ⛷🏻 E0.0 skier: light skin tone
 26F7 1F3FC                                             ; fully-qualified     # ⛷🏼 E0.0 skier: medium-light skin tone
 26F7 1F3FD                                             ; fully-qualified     # ⛷🏽 E0.0 skier: medium skin tone
@@ -44,3 +44,19 @@ E50A                                                   ; fully-qualified     # �
 1F574 1F3FD 200D 2640                                  ; minimally-qualified # 🕴🏽‍♀ E0.0 woman in suit levitating: medium skin tone
 1F574 1F3FE 200D 2640                                  ; minimally-qualified # 🕴🏾‍♀ E0.0 woman in suit levitating: medium-dark skin tone
 1F574 1F3FF 200D 2640                                  ; minimally-qualified # 🕴🏿‍♀ E0.0 woman in suit levitating: dark skin tone
+
+# twitter also supports nonstandard constructions for MxClaus gender variants (probably added by accident)
+# i have them disabled by default, because they are redundant which breaks my parser
+# 1F468 200D 1F384                                       ; fully-qualified     # 👨‍🎄 E0.0 Santa Claus
+# 1F468 1F3FB 200D 1F384                                 ; fully-qualified     # 👨🏻‍🎄 E0.0 Santa Claus: light skin tone
+# 1F468 1F3FC 200D 1F384                                 ; fully-qualified     # 👨🏼‍🎄 E0.0 Santa Claus: medium-light skin tone
+# 1F468 1F3FD 200D 1F384                                 ; fully-qualified     # 👨🏽‍🎄 E0.0 Santa Claus: medium skin tone
+# 1F468 1F3FE 200D 1F384                                 ; fully-qualified     # 👨🏾‍🎄 E0.0 Santa Claus: medium-dark skin tone
+# 1F468 1F3FF 200D 1F384                                 ; fully-qualified     # 👨🏿‍🎄 E0.0 Santa Claus: dark skin tone
+# 
+# 1F469 200D 1F384                                       ; fully-qualified     # 👩‍🎄 E0.0 Mrs. Claus
+# 1F469 1F3FB 200D 1F384                                 ; fully-qualified     # 👩🏻‍🎄 E0.0 Mrs. Claus: light skin tone
+# 1F469 1F3FC 200D 1F384                                 ; fully-qualified     # 👩🏼‍🎄 E0.0 Mrs. Claus: medium-light skin tone
+# 1F469 1F3FD 200D 1F384                                 ; fully-qualified     # 👩🏽‍🎄 E0.0 Mrs. Claus: medium skin tone
+# 1F469 1F3FE 200D 1F384                                 ; fully-qualified     # 👩🏾‍🎄 E0.0 Mrs. Claus: medium-dark skin tone
+# 1F469 1F3FF 200D 1F384                                 ; fully-qualified     # 👩🏿‍🎄 E0.0 Mrs. Claus: dark skin tone
