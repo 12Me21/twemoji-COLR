@@ -63,90 +63,45 @@ for (let i=0;i<26;i++) {
 let vs16 = {}
 
 // read/parse lines from file
-for await (let line of lines('data/emoji-test.txt')) {
-	let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
-	if (!match) continue
-	let [, codes, qual, str, version, name] = match
-	codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
-	
-	// filter out varsel16s, create list of which chars need them
-	let prev
-	let codes2 = codes.filter(c=>{
-		if (prev) {
-			if (+c == 0xFE0F) {
-				if (vs16[prev]===undefined)
-					vs16[prev] = 2
-				else
-					vs16[prev] = 1
-				return false
-			} else {
-				if (vs16[prev] >= 1) {
-					vs16[prev] = 1
-				} else
-					vs16[prev] = 0
+for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
+	for await (let line of lines(file)) {
+		let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
+		if (!match) continue
+		let [, codes, qual, str, version, name] = match
+		codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
+		
+		// filter out varsel16s, create list of which chars need them
+		let prev
+		let codes2 = codes.filter(c=>{
+			if (prev) {
+				if (+c == 0xFE0F) {
+					if (vs16[prev]===undefined)
+						vs16[prev] = 2
+					else
+						vs16[prev] = 1
+					return false
+				} else {
+					if (vs16[prev] >= 1) {
+						vs16[prev] = 1
+					} else
+						vs16[prev] = 0
+				}
 			}
-		}
-		prev = c
-		return true
-	})
-	
-	let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
-	
-	let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
-	
-	map.set(name, {
-		codes: codes2,
-		name,
-		version: +version,
-		file,
-	})
-	
-	// append this one here
-	if (name=="Statue of Liberty") {
-		map.set("Shibuya", {
-			codes: ['0xE50A'],
-			name: "Shibuya",
-			version: -1,
-			file: 'e50a',
+			prev = c
+			return true
+		})
+		
+		let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
+		
+		let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
+		
+		map.set(name, {
+			codes: codes2,
+			name,
+			version: +version,
+			file,
 		})
 	}
-	if (name=="skier") {
-		let code = 0x1F3FB
-		for (let x of skin_names) {
-			let name2 = name+": "+x
-			map.set(name2, {
-				codes: codes2.concat(["0x"+code.toString(16).toUpperCase()]),
-				name: name2,
-				version: -1,
-				file: '26f7-'+code.toString(16),
-			})
-			code++
-		}
-	}
-	if (name.startsWith("person in suit levitating")) {
-		if (!name.includes(":"))
-			file += "-fe0f"
-		suit_hack1.push({
-			codes: codes2.concat(["0x200D","0x2642","0xFE0F"]),
-			name: name.replace("person", "man"),
-			version: -1,
-			file: file+"-200d-2642-fe0f",
-		})
-		suit_hack2.push({
-			codes: codes2.concat(["0x200D","0x2640","0xFE0F"]),
-			name: name.replace("person", "woman"),
-			version: -1,
-			file: file+"-200d-2640-fe0f"
-		})
-		// flush
-		if (name=="person in suit levitating: dark skin tone") {
-			for (let x of suit_hack1)
-				map.set(x.name, x)
-			for (let x of suit_hack2)
-				map.set(x.name, x)
-		}
-	}
-}
 
 let override = {
 	'1st place medal': 'first place medal',
@@ -227,7 +182,7 @@ function gname(codes) {
 	}).join("_")
 }
 
-process.stdout.write("[\n")
+process.stdout.write("[")
 
 let first = true
 function print_item(obj) {
