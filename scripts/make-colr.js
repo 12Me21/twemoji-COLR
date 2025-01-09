@@ -1,5 +1,5 @@
 import {XmlWriter} from './xml.js'
-import layers from '../build/layers.mjs'
+import layers from '../build/layers.json' with {type:'json'}
 import Bar from './progress.js'
 
 let colors = new Map()

@@ -227,17 +227,23 @@ function gname(codes) {
 	}).join("_")
 }
 
-process.stdout.write("export default [\n")
+process.stdout.write("[\n")
+
+let first = true
+function print_item(obj) {
+	process.stdout.write((first?"\n\t":",\n\t")+JSON.stringify(obj))
+	first = false
+}
 
 for (let data of extras) {
 	data.glyphName = gname(data.codes)
-	process.stdout.write("\t"+JSON.stringify({
+	print_item({
 		ident: data.ident,
 		codes: data.codes,
 		file: data.file || null,
 		glyphName: data.glyphName,
 		vs16: data.vs16,
-	})+",\n")
+	})
 }
 
 for (let [fullname, data] of map) {
@@ -304,16 +310,16 @@ for (let [fullname, data] of map) {
 	
 	let v16 = data.codes.length==1 && vs16[data.codes[0]] || undefined
 	
-	process.stdout.write("\t"+JSON.stringify({
+	print_item({
 		ident: fullname,
 		codes: data.codes,
 		vs16: v16,
 		file: data.file,
 		glyphName: gname(data.codes)
-	})+",\n")
+	})
 }
 
-process.stdout.write("]\n")
+process.stdout.write("\n]\n")
 
 // types:
 // simple (single variant)
