@@ -61,8 +61,10 @@ class Ellipse extends Shape {
 }
 
 function expandColor(c, opacity) {
-	if (!c || c == 'none')
+	if (!c)
 		return null
+	if (c=='none')
+		return "#00000000"
 	check: {
 		if (c.startsWith("#")) {
 			switch (c.length) {
@@ -75,10 +77,11 @@ function expandColor(c, opacity) {
 					throw new TypeError('mixed opacity')
 				return c
 			}
-		} else if (c = named[c]) {
+		} else if (named[c]) {
+			c = named[c]
 			break check
 		}
-		throw new TypeError('unknown color name: '+c)
+		throw new TypeError(`unknown color name: ‘${c}’`)
 	}
 	return c + Math.round(opacity*255).toString(16).padStart(2,'0')
 }
@@ -100,6 +103,9 @@ export function process_svg(filename) {
 			return
 		let fill
 		let opacity = Number(attrs.opacity ?? attrs['fill-opacity'] ?? 1.0)
+		if ('stroke' in attrs && attrs.stroke!='none') {
+			console.warn("STROKED PATHS ARE UNSUPPORTED")
+		}
 		if ('fill' in attrs) {
 			fill = expandColor(attrs.fill, opacity)
 		} else {
@@ -144,13 +150,15 @@ export function process_svg(filename) {
 				throw new Error('group transform not supported')
 			//
 		} else if (name=="svg") {
-			if (attrs.viewBox!="0 0 36 36")
-				throw new Error("bad svg size: "+attrs.viewBox+"  in "+filename)
+			if (attrs.viewBox!="0 0 36 36") {
+				//console.warn(`WRONG SVG SIZE ‘${attrs.viewBox}’`)
+				throw new Error(`WRONG SVG VIEWBOX ‘${attrs.viewBox}’`)
+			}
 		} else if (name=="defs") {
 			inDefs = true
-			console.warn("found <defs> in "+filename)
+			console.warn("SPURIOUS <defs> ELEMENT")
 		} else {
-			throw new Error('unknown shape: <'+name+"> in "+filename)
+			throw new Error('unknown shape: <'+name+">")
 		}
 		//console.warn('opened', name)
 		fillColors.push(fillColor)

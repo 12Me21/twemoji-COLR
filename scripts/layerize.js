@@ -27,6 +27,7 @@ for (let em of edata) {
 	
 	// todo: would be nice if we could like, tell it to start loading the next file right away so it will be ready by the time the current one processes.
 	// also; would be nice if we could sync this task with fontforge so it imports the layers as we produce them
+	console.info(`processing svg: ‘${em.file}.svg’`)
 	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
 	
 	let sc = 0
