@@ -45,18 +45,19 @@ E50A                                                   ; fully-qualified     # �
 1F574 1F3FE 200D 2640                                  ; minimally-qualified # 🕴🏾‍♀ E0.0 woman in suit levitating: medium-dark skin tone
 1F574 1F3FF 200D 2640                                  ; minimally-qualified # 🕴🏿‍♀ E0.0 woman in suit levitating: dark skin tone
 
-# twitter also supports nonstandard constructions for MxClaus gender variants (probably added by accident)
-# i have them disabled by default, because they are redundant which breaks my parser
-# 1F468 200D 1F384                                       ; fully-qualified     # 👨‍🎄 E0.0 Santa Claus
-# 1F468 1F3FB 200D 1F384                                 ; fully-qualified     # 👨🏻‍🎄 E0.0 Santa Claus: light skin tone
-# 1F468 1F3FC 200D 1F384                                 ; fully-qualified     # 👨🏼‍🎄 E0.0 Santa Claus: medium-light skin tone
-# 1F468 1F3FD 200D 1F384                                 ; fully-qualified     # 👨🏽‍🎄 E0.0 Santa Claus: medium skin tone
-# 1F468 1F3FE 200D 1F384                                 ; fully-qualified     # 👨🏾‍🎄 E0.0 Santa Claus: medium-dark skin tone
-# 1F468 1F3FF 200D 1F384                                 ; fully-qualified     # 👨🏿‍🎄 E0.0 Santa Claus: dark skin tone
-# 
-# 1F469 200D 1F384                                       ; fully-qualified     # 👩‍🎄 E0.0 Mrs. Claus
-# 1F469 1F3FB 200D 1F384                                 ; fully-qualified     # 👩🏻‍🎄 E0.0 Mrs. Claus: light skin tone
-# 1F469 1F3FC 200D 1F384                                 ; fully-qualified     # 👩🏼‍🎄 E0.0 Mrs. Claus: medium-light skin tone
-# 1F469 1F3FD 200D 1F384                                 ; fully-qualified     # 👩🏽‍🎄 E0.0 Mrs. Claus: medium skin tone
-# 1F469 1F3FE 200D 1F384                                 ; fully-qualified     # 👩🏾‍🎄 E0.0 Mrs. Claus: medium-dark skin tone
-# 1F469 1F3FF 200D 1F384                                 ; fully-qualified     # 👩🏿‍🎄 E0.0 Mrs. Claus: dark skin tone
+# nonstandard constructions for MxClaus gender variants (probably added by accident)
+# they do actually use separate svg files, so i count them as separate emojis
+# compare: `1f468-200d-1f384.svg` vs `1f385.svg` etc.
+1F468 200D 1F384                                       ; fully-qualified     # 👨‍🎄 E0.0 Santa Claus 2
+1F468 1F3FB 200D 1F384                                 ; fully-qualified     # 👨🏻‍🎄 E0.0 Santa Claus 2: light skin tone
+1F468 1F3FC 200D 1F384                                 ; fully-qualified     # 👨🏼‍🎄 E0.0 Santa Claus 2: medium-light skin tone
+1F468 1F3FD 200D 1F384                                 ; fully-qualified     # 👨🏽‍🎄 E0.0 Santa Claus 2: medium skin tone
+1F468 1F3FE 200D 1F384                                 ; fully-qualified     # 👨🏾‍🎄 E0.0 Santa Claus 2: medium-dark skin tone
+1F468 1F3FF 200D 1F384                                 ; fully-qualified     # 👨🏿‍🎄 E0.0 Santa Claus 2: dark skin tone
+
+1F469 200D 1F384                                       ; fully-qualified     # 👩‍🎄 E0.0 Mrs. Claus 2
+1F469 1F3FB 200D 1F384                                 ; fully-qualified     # 👩🏻‍🎄 E0.0 Mrs. Claus 2: light skin tone
+1F469 1F3FC 200D 1F384                                 ; fully-qualified     # 👩🏼‍🎄 E0.0 Mrs. Claus 2: medium-light skin tone
+1F469 1F3FD 200D 1F384                                 ; fully-qualified     # 👩🏽‍🎄 E0.0 Mrs. Claus 2: medium skin tone
+1F469 1F3FE 200D 1F384                                 ; fully-qualified     # 👩🏾‍🎄 E0.0 Mrs. Claus 2: medium-dark skin tone
+1F469 1F3FF 200D 1F384                                 ; fully-qualified     # 👩🏿‍🎄 E0.0 Mrs. Claus 2: dark skin tone
