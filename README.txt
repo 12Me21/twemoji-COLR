@@ -5,6 +5,7 @@ supports unicode emoji v15.1
 Dependencies:
 - nodejs
 - fontforge
+- fonttools
 
 Building:
  run `make`
