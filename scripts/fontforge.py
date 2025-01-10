@@ -21,9 +21,9 @@ f = fontforge.font()
 f.encoding = 'UnicodeFull'
 f.copyright = '(c) my balls'
 f.design_size = 16
-f.fontname = "TwitterColorEmoji"
-f.familyname = "Twitter Color Emoji"
-f.fullname = "Twitter Color Emoji"
+f.fontname = "TwemojiMozilla"
+f.familyname = "Twemoji Mozilla"
+f.fullname = "Twemoji Mozilla"
 f.os2_vendor = "12;;"
 
 # temporary metrics, to facilitate importing the svgs
@@ -50,8 +50,9 @@ f.hhea_ascent = f.os2_typoascent
 f.hhea_descent = f.os2_typodescent
 f.hhea_linegap = 0
 
-f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
-f.os2_family_class = 3072
+# this causes issues with fallback for me, for now
+#f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
+#f.os2_family_class = 3072
 
 guessed_gids = [[],[],[]]
 
