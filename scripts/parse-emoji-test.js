@@ -1,68 +1,49 @@
 import Fs from 'fs'
 import {lines} from './util.js'
 
-// todo: theres one more unsupported set of redundant ligatures
+let emojis = []
+let extras = []
 
-let map = new Map()
-
-let numbers = {
-	__proto__: 'Zero One Two Three Four Five Six Seven Eight Nine Ten'.split(" "),
-	'*':'asterisk','&':'and','#':'number sign',
-	ñ:'n',Å:'A',é:'e',ô:'o',ç:'c',é:'e',ã:'a',é:'e',í:'i',ü:'u',
-	'.':"",'(':"",')':"",'’':"",'“':"",'”':"",'!':"",
-}
-
-let extras = [
-	{ident: 'ZeroWidthJoiner', codes: ["0x200D"]},
-	{ident: 'VariationSixteen',codes: ['0xFE0F']}, // do we need this?
-	
-	{ident: 'Keycap', codes: ["0x20E3"], file: '1f7e6'},
-	{ident: 'NumberSign', codes: ["0x23"], file: '23-20e3', vs16: 2},
-	{ident: 'Asterisk', codes: ["0x2A"], file: '2a-20e3', vs16: 2},
-]
-
-let suit_hack1 = [], suit_hack2 = []
-
-let skin_names = ['light skin tone','medium-light skin tone','medium skin tone','medium-dark skin tone','dark skin tone']
-
-for (let i=0;i<10;i++) {
-	let code = (0x30+i).toString(16)
+// zero width joiner
+extras.push({codes: ["0x200D"]})
+// variation selector 16 (do we need this?)
+extras.push({codes: ["0xFE0F"]})
+// combining enclosing keycap
+extras.push({codes: ["0x20E3"], file: '1f7e6'})
+// phone keypad characters (for keycap emojis)
+for (let chr of "0123456789#*") {
+	let code = chr.codePointAt().toString(16)
 	extras.push({
-		ident: numbers[i],
-		codes: ["0x"+code.toUpperCase()],
+		codes: ["0x"+code],
 		file: code+"-20e3",
 		vs16: 2,
 	})
 }
-
+// tag letters (for regional flags)
 for (let i=0;i<36;i++) {
 	let letter = i.toString(36)
-	let name = i<10 ? numbers[i].toLowerCase() : letter
 	extras.push({
-		ident: 'Tag_'+name,
-		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16).toUpperCase()],
+		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16)],
 	})
 }
+// tag cancel (for regional flags)
 extras.push({
-	ident: 'Tag_cancel',
 	codes: ["0xE007F"],
 })
-
+// regional indicators (for country flags)
 for (let i=0;i<26;i++) {
 	let letter = (i+10).toString(36)
 	let code = (0x1F1E6+i).toString(16)
 	let codes = ["0x"+code.toUpperCase()]
 	extras.push({
-		ident: 'RegionalIndicator_'+letter,
 		codes,
 		file: code,
-		glyphName: gname(codes)
 	})
 }
 
-let vs16 = {}
+let vs16 = {__proto__:null}
 
-// read/parse lines from file
+// read/parse lines from files
 for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 	for await (let line of lines(file)) {
 		let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
@@ -95,80 +76,12 @@ for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 		
 		let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
 		
-		map.set(name, {
+		emojis.push({
 			codes: codes2,
-			name,
-			version: +version,
 			file,
+			version: +version,
 		})
 	}
-
-let override = {
-	'1st place medal': 'first place medal',
-	'2nd place medal': 'second place medal',
-	'3rd place medal': 'third place medal',
-	
-	'keycap 10': 'keycap ten',
-	
-	'kiss': 'people kissing',
-	
-	'prince': 'man with crown',
-	'princess': 'woman with crown',
-	'merman': 'man merperson',
-	'mermaid': 'woman merperson',
-	'Santa Claus': 'man mx claus',
-	'Mrs. Claus': 'woman mx claus',
-	'old man': 'older man',
-	'old woman': 'older woman',
-}
-
-let ig = {
-	'woman with headscarf': true,
-	'man dancing': true,
-	'woman dancing': true,
-}
-
-let extnames = {
-	'light skin tone': 'skin1',
-	'medium-light skin tone': 'skin2',
-	'medium skin tone': 'skin3',
-	'medium-dark skin tone': 'skin4',
-	'dark skin tone': 'skin5',
-	
-	'blond hair':'person with blond hair',
-	'red hair':'person with red hair',
-	'white hair':'person with white hair',
-	'curly hair':'person with curly hair',
-	'bald':'bald person',
-	'beard':'person with beard',
-}
-
-function decode_gender(basename) {
-	let gender
-	basename = basename.replace(/\b(?:wo)?m[ae]n(?: and man)?(?= |$)/, (g)=>{
-		if (g=='men') g = 'man, man'
-		else if (g=='women') g = 'woman, woman'
-		else if (g=='woman and man') g = 'woman, man'
-		else {
-			gender = g
-			return "person"
-		}
-		gender = g
-		return "people"
-	})
-	if (gender) {
-		let base = map.get(basename)
-		if (!base) {
-			basename = basename.replace(/^person /, "")
-			base = map.get(basename)
-		}
-		if (!base) {
-			console.warn("can't find “"+name+"”")
-			//throw new Error("can't find “"+basename+"”")
-		}
-	}
-	return [basename, gender]
-}
 
 function gname(codes) {
 	return codes.map((n,short)=>{
@@ -191,82 +104,29 @@ function print_item(obj) {
 }
 
 for (let data of extras) {
-	data.glyphName = gname(data.codes)
 	print_item({
-		ident: data.ident,
 		codes: data.codes,
 		file: data.file || null,
-		glyphName: data.glyphName,
+		glyphName: gname(data.codes),
 		vs16: data.vs16,
 	})
 }
 
-for (let [fullname, data] of map) {
+for (let data of emojis) {
 //	if (data.version >= 15)
 //		continue
 //	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
 //		continue
 	
-	fullname = fullname
-		.replace(/^flag: /, "flag_")
-		.replace(/^keycap: /, "keycap ")
-	
-	let [name, ext] = fullname.split(': ')
-	name = override[name] ?? name
-	
-	if (!ig[name]) {
-		let [basename, gender] = decode_gender(name)
-		if (gender) {
-			name = basename
-			if (ext)
-				ext = gender + ", " + ext
-			else
-				ext = gender
-		} else {
-			if (ext)
-				ext = ext.replace("person, person, ", "")
-		}
-	}
-	
-	if (ext) {
-		ext = ext.split(", ").map(e=>{
-			let f = extnames[e]
-			if (f && f.includes(" ")) {
-				name = f
-				return null
-			}
-			return f ?? e
-		})
-		ext = ext.filter(e=>e)
-		ext = ext.sort((a,b)=>{
-			return (a.startsWith('skin') - b.startsWith('skin'))
-		})
-	}
-	
-	name = name.replace(/[^-,: A-Za-z_]/g, v=>{
-		let rep = numbers[v]
-		if (rep==undefined)
-			throw new Error('dont know how '+v)
-		return rep
-	})
-	
-	name = name.toLowerCase().replace(/(?:[- ]+|^|(_))(.)/g, (m,s,a)=>(s||"")+a.toUpperCase())
-	
-	if (ext)
-		fullname = [name,...ext].join("_")
-	else
-		fullname = name
-	
-	//console.log(fullname)
-	
 	if (data.file)
-		if (!Fs.existsSync('twemoji/assets/svg/'+data.file+".svg"))
-			console.warn('missing', fullname, data.file)
+		if (!Fs.existsSync(`twemoji/assets/svg/${data.file}.svg`)) {
+			data.file = null
+			console.warn(`missing svg ${data.file}.svg, for`, data.codes)
+		}
 	
 	let v16 = data.codes.length==1 && vs16[data.codes[0]] || undefined
 	
 	print_item({
-		ident: fullname,
 		codes: data.codes,
 		vs16: v16,
 		file: data.file,
@@ -275,10 +135,3 @@ for (let [fullname, data] of map) {
 }
 
 process.stdout.write("\n]\n")
-
-// types:
-// simple (single variant)
-// skin color (e.g. hands)
-// gender (some people emojis)
-// gender, skin color (most people emojis)
-// couple (i.e. gender, skin color except with more gender and skin color options)

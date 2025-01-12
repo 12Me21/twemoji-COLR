@@ -6,10 +6,6 @@ import edata from '../data/edata.json' with {type:'json'}
 
 let layers = new Map()
 
-//edata.sort((a,b)=>{
-//	return a.ident.length - b.ident.length
-//})
-
 let glyphs = []
 let bar = new Bar(edata.length)
 let w1 = 0
@@ -58,7 +54,7 @@ bar.end()
 //console.log(layers)
 
 let meta = edata.map(em=>{
-	return JSON.stringify({ident: em.ident, layers: em.layers, glyphName: em.glyphName})
+	return JSON.stringify({layers: em.layers, glyphName: em.glyphName})
 }).join("\n,\t")
 
 console.warn("layers:", layers.size, "shapes:", totalshapes)
