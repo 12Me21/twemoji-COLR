@@ -56,12 +56,26 @@ f.hhea_linegap = 0
 
 guessed_gids = [[],[],[]]
 
+
+couples = [
+	("hands", "‍🤝", "‍"),
+	("kiss", "‍", "❤‍💋‍"),
+	("heart", "‍", "❤‍"),
+]
+
+# couple half tables
+for c in couples:
+	name = "couple_"+c[0]
+
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
 
 # destroy couple emojis !!
-f.addLookup('decouple', 'gsub_multiple', None, [("ccmp",[("DFLT",["dflt"])])])
+f.addLookup('decouple', 'gsub_multiple', None, [("ccmp",[("DFLT",["dflt"])])], 'any')
 f.addLookupSubtable('decouple', 'decouple-1')
+
+# recreate them
+f.addLookup('couples', 'gsub_contextchain', None, [("ccmp",[("DFLT",["dflt"])])], 'decouple')
 
 def gname(cp):
 	if (cp>=0x10000):
@@ -70,6 +84,12 @@ def gname(cp):
 
 def lname(codes):
 	return "u"+"_".join("%04X" % c for c in codes)
+
+person_list = []
+for gender in range(3):
+	base = ord("🧑👨👩"[gender])
+	for skin in range(6):
+		person_list += [gname(base) if skin==0 else lname([base,0x1F3FB+skin-1])]
 
 def create_unicode(cp, vs16):
 	glyph = f.createChar(cp, gname(cp))
@@ -87,6 +107,7 @@ def create_ligature(codes):
 
 def create_layer(name, shapecount):
 	glyph = f.createChar(-1, name)
+	glyph.width = WIDTH
 	# load each shape in the layer, being sure to *individually* correct their directions, otherwise removeOverlap() will break
 	for i in range(0, shapecount):
 		glyph.importOutlines('build/layers/'+name+"_"+str(i)+".svg", simplify=False, correctdir=True, scale=True)
@@ -100,7 +121,6 @@ def create_layer(name, shapecount):
 	glyph.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
 	glyph.canonicalContours()
 	glyph.canonicalStart()
-	glyph.width = WIDTH
 
 for g in glyphList:
 	name = str(g['glyphName'])
@@ -116,13 +136,39 @@ for g in glyphList:
 		create_layer(name, g['shapeCount'])
 
 # explode and kill them !!!
-couples = json.load(open("data/couples-decompose.json", "r"))
-for couple in couples:
+decouples = json.load(open("data/couples-decompose.json", "r"))
+for couple in decouples:
 	before = lname([ord(c) for c in couple[0]])
 	after = tuple([gname(ord(c)) for c in couple[1]])
 	f[before].addPosSub('decouple-1', after)
 
 # and now, we try
+for c in couples:
+	name = "couple_"+c[0]
+	before = c[1]
+	after = c[2]
+	
+	f.addLookup(name+"_left", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_left", name+"_left2")
+	f.addLookup(name+"_right", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_right", name+"_right2")
+	
+	left_list = []
+	for x in range(0, 3*6):
+		glyph = f.createChar(-1, f"{name}_left_{x}")
+		glyph.width = round(WIDTH/2)
+		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
+		left_list += [f"{name}_left_{x}"]
+		
+		glyph2 = f.createChar(-1, f"{name}_right_{x}")
+		glyph2.width = round(WIDTH/2)
+		glyph2.addPosSub(name+"_right2", [person_list[x]])
+	
+	rule1 = f"| [{" ".join(person_list)}] @<{name+"_left"}> {" ".join(["["+gname(ord(b))+"]" for b in before])} | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}]"
+	rule2 = f"[{" ".join(left_list)}] | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}] @<{name+"_right"}> |"
+	
+	f.addContextualSubtable('couples', name+"_2", 'coverage', rule2)
+	f.addContextualSubtable('couples', name+"_1", 'coverage', rule1)
 
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
