@@ -59,6 +59,10 @@ guessed_gids = [[],[],[]]
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
 
+# destroy couple emojis !!
+f.addLookup('decouple', 'gsub_multiple', None, [("ccmp",[("DFLT",["dflt"])])])
+f.addLookupSubtable('decouple', 'decouple-1')
+
 def gname(cp):
 	if (cp>=0x10000):
 		return "u%X" % cp
@@ -111,11 +115,21 @@ for g in glyphList:
 	else:
 		create_layer(name, g['shapeCount'])
 
+# explode and kill them !!!
+couples = json.load(open("data/couples-decompose.json", "r"))
+for couple in couples:
+	before = lname([ord(c) for c in couple[0]])
+	after = tuple([gname(ord(c)) for c in couple[1]])
+	f[before].addPosSub('decouple-1', after)
+
+# and now, we try
+
+
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 f.ascent = EM - DESCENT
 f.descent = DESCENT
 assert f.em == EM
-		
+
 f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))
 
 # todo: use setTableData to create cpal/colr

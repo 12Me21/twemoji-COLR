@@ -76,6 +76,16 @@ for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 			return true
 		})
 		
+		let couple = null
+		if (/^couple with heart(:|$)/.test(name))
+			couple = "heart"
+		else if (/^kiss(:|$)/.test(name))
+			couple = "kiss"
+		else if (/^(people|women|woman and man|men) holding hands(:|$)/.test(name))
+			couple = "hands"
+		if (couple && codes.length > 2)
+			continue
+		
 		let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
 		
 		let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
