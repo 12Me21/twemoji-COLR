@@ -58,9 +58,9 @@ guessed_gids = [[],[],[]]
 
 
 couples = [
-	("hands", "‍🤝", "‍"),
-	("kiss", "‍", "❤‍💋‍"),
-	("heart", "‍", "❤‍"),
+	("hands", "‍🤝‍", ""),
+	("kiss", "‍❤‍💋‍", ""),
+	("heart", "‍❤‍", ""),
 ]
 
 # couple half tables
@@ -146,7 +146,6 @@ for couple in decouples:
 for c in couples:
 	name = "couple_"+c[0]
 	before = c[1]
-	after = c[2]
 	
 	f.addLookup(name+"_left", 'gsub_ligature', None, ())
 	f.addLookupSubtable(name+"_left", name+"_left2")
@@ -157,19 +156,21 @@ for c in couples:
 	for x in range(0, 3*6):
 		glyph = f.createChar(-1, f"{name}_left_{x}")
 		glyph.width = round(WIDTH/2)
-		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
+		glyph.addPosSub(name+"_left2", [person_list[x]])
 		left_list += [f"{name}_left_{x}"]
 		
 		glyph2 = f.createChar(-1, f"{name}_right_{x}")
 		glyph2.width = round(WIDTH/2)
 		glyph2.addPosSub(name+"_right2", [person_list[x]])
 	
-	rule1 = f"| [{" ".join(person_list)}] @<{name+"_left"}> {" ".join(["["+gname(ord(b))+"]" for b in before])} | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}]"
-	rule2 = f"[{" ".join(left_list)}] | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}] @<{name+"_right"}> |"
+	rule1 = f"| [{" ".join(person_list)}] @<{name+"_left"}> | {" ".join(["["+gname(ord(b))+"]" for b in before])} [{" ".join(person_list)}]"
+	rule2 = f"[{" ".join(left_list)}] | [{" ".join(person_list)}] @<{name+"_right"}> |"
 	
 	f.addContextualSubtable('couples', name+"_2", 'coverage', rule2)
 	f.addContextualSubtable('couples', name+"_1", 'coverage', rule1)
-
+#1012044
+#1012240
+#1011844
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 f.ascent = EM - DESCENT
