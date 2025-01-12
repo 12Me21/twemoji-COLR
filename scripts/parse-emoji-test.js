@@ -1,5 +1,9 @@
 import Fs from 'fs'
-import {lines} from './util.js'
+import Readline from 'readline'
+
+function lines(path) {
+	return Readline.createInterface({input: Fs.createReadStream(path)})
+}
 
 let emojis = []
 let extras = []
