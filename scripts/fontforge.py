@@ -1,5 +1,3 @@
-# Based on https://github.com/FontCustom/fontcustom/blob/master/lib/fontcustom/scripts/generate.py
-
 import fontforge
 import sys
 import json
@@ -148,7 +146,6 @@ for g in glyphList:
 	name = str(g['glyphName'])
 	sys.stderr.write('glyph '+name+"\n")
 	glyph = None
-	print(g)
 	if ('codes' in g):
 		codes = [int(x, 16) for x in g['codes']]
 		if (len(codes)==1):
@@ -178,16 +175,9 @@ for cname in couples:
 		
 	left_list = []
 	for x in range(0, 3*6):
-#		glyph = f.createChar(-1, f"{name}_{x}_left")
-#		glyph.width = round(WIDTH/2)
-#		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
 		left_list += [f"{name}_{x}_left"]
 		left_all += [f"{name}_{x}_left"]
 		right_all += [f"{name}_{x}_right"]
-		
-#		glyph2 = f.createChar(-1, f"{name}_{x}_right")
-#		glyph2.width = round(WIDTH/2)
-#		glyph2.addPosSub(name+"_right2", [gname(ord(b)) for b in after] + [person_list[x]])
 	
 	rule1 = f"| [{" ".join(person_list)}] @<{name+"_left"}> {" ".join(["["+gname(ord(b))+"]" for b in before])} | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}]"
 	rule2 = f"[{" ".join(left_list)}] | {" ".join(["["+gname(ord(b))+"]" for b in after])} @<{name+"_right"}> [{" ".join(person_list)}] |"
@@ -201,7 +191,6 @@ for cname in couples:
 #1000196
 
 f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
-print(left_all, right_all)
 f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
