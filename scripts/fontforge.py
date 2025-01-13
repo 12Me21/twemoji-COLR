@@ -57,15 +57,11 @@ f.hhea_linegap = 0
 guessed_gids = [[],[],[]]
 
 
-couples = [
-	("hands", "‍🤝", "‍"),
-	("kiss", "‍❤‍💋", "‍"),
-	("heart", "‍❤", "‍"),
-]
-
-# couple half tables
-for c in couples:
-	name = "couple_"+c[0]
+couples = {
+	"hands": ("‍🤝", "‍"),
+	"kiss": ("‍❤‍💋", "‍"),
+	"heart": ("‍❤", "‍"),
+}
 
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
@@ -76,6 +72,14 @@ f.addLookupSubtable('decouple', 'decouple-1')
 
 # recreate them
 f.addLookup('couples', 'gsub_contextchain', None, [("ccmp",[("DFLT",["dflt"])])], 'decouple')
+
+for c in couples:
+	name = "couple_"+c
+	
+	f.addLookup(name+"_left", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_left", name+"_left2")
+	f.addLookup(name+"_right", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_right", name+"_right2")
 
 def gname(cp):
 	if (cp>=0x10000):
@@ -122,16 +126,37 @@ def create_layer(name, shapecount):
 	glyph.canonicalContours()
 	glyph.canonicalStart()
 
+def create_couple(name, cdata):
+	glyph = f.createChar(-1, name)
+	glyph.width = round(WIDTH/2)
+	
+	ctype = cdata[0]
+	num = cdata[1]
+	side = cdata[2]
+	
+	c = couples[ctype]
+	cname = "couple_"+ctype
+	before = c[0]
+	after = c[1]
+	
+	if side=="left":
+		glyph.addPosSub(cname+"_left2", [person_list[num]] + [gname(ord(b)) for b in before])
+	else:
+		glyph.addPosSub(cname+"_right2", [gname(ord(b)) for b in after] + [person_list[num]])
+	
 for g in glyphList:
 	name = str(g['glyphName'])
 	sys.stderr.write('glyph '+name+"\n")
 	glyph = None
+	print(g)
 	if ('codes' in g):
 		codes = [int(x, 16) for x in g['codes']]
 		if (len(codes)==1):
 			create_unicode(codes[0], g.get('vs16'))
 		else:
 			create_ligature(codes)
+	elif 'couple' in g:
+		create_couple(name, g['couple'])
 	else:
 		create_layer(name, g['shapeCount'])
 
@@ -143,26 +168,22 @@ for couple in decouples:
 	f[before].addPosSub('decouple-1', after)
 
 # and now, we try
-for c in couples:
-	name = "couple_"+c[0]
-	before = c[1]
-	after = c[2]
-	
-	f.addLookup(name+"_left", 'gsub_ligature', None, ())
-	f.addLookupSubtable(name+"_left", name+"_left2")
-	f.addLookup(name+"_right", 'gsub_ligature', None, ())
-	f.addLookupSubtable(name+"_right", name+"_right2")
-	
+for cname in couples:
+	name = "couple_"+cname
+	c = couples[cname]
+	before = c[0]
+	after = c[1] # note this must be a single character only !
+		
 	left_list = []
 	for x in range(0, 3*6):
-		glyph = f.createChar(-1, f"{name}_left_{x}")
-		glyph.width = round(WIDTH/2)
-		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
-		left_list += [f"{name}_left_{x}"]
+#		glyph = f.createChar(-1, f"{name}_{x}_left")
+#		glyph.width = round(WIDTH/2)
+#		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
+		left_list += [f"{name}_{x}_left"]
 		
-		glyph2 = f.createChar(-1, f"{name}_right_{x}")
-		glyph2.width = round(WIDTH/2)
-		glyph2.addPosSub(name+"_right2", [gname(ord(b)) for b in after] + [person_list[x]])
+#		glyph2 = f.createChar(-1, f"{name}_{x}_right")
+#		glyph2.width = round(WIDTH/2)
+#		glyph2.addPosSub(name+"_right2", [gname(ord(b)) for b in after] + [person_list[x]])
 	
 	rule1 = f"| [{" ".join(person_list)}] @<{name+"_left"}> {" ".join(["["+gname(ord(b))+"]" for b in before])} | {" ".join(["["+gname(ord(b))+"]" for b in after])} [{" ".join(person_list)}]"
 	rule2 = f"[{" ".join(left_list)}] | {" ".join(["["+gname(ord(b))+"]" for b in after])} @<{name+"_right"}> [{" ".join(person_list)}] |"
@@ -172,6 +193,8 @@ for c in couples:
 #1012044
 #1012240
 #1011844 bad
+# right lookup contains 1 zwj: 1012012
+#1000196
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 f.ascent = EM - DESCENT

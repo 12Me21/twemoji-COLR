@@ -7,6 +7,7 @@ function lines(path) {
 
 let emojis = []
 let extras = []
+let couples = [] // couple prototypes
 
 // zero width joiner
 extras.push({codes: ["0x200D"]})
@@ -47,6 +48,47 @@ for (let i=0;i<26;i++) {
 
 let vs16 = {__proto__:null}
 
+let hardcoded_couples = {
+	"👭":"👩‍🤝‍👩",
+	"👭🏻":"👩🏻‍🤝‍👩🏻",
+	"👭🏼":"👩🏼‍🤝‍👩🏼",
+	"👭🏽":"👩🏽‍🤝‍👩🏽",
+	"👭🏾":"👩🏾‍🤝‍👩🏾",
+	"👭🏿":"👩🏿‍🤝‍👩🏿",
+	"👫":"👩‍🤝‍👨",
+	"👫🏻":"👩🏻‍🤝‍👨🏻",
+	"👫🏼":"👩🏼‍🤝‍👨🏼",
+	"👫🏽":"👩🏽‍🤝‍👨🏽",
+	"👫🏾":"👩🏾‍🤝‍👨🏾",
+	"👫🏿":"👩🏿‍🤝‍👨🏿",
+	"👬":"👨‍🤝‍👨",
+	"👬🏻":"👨🏻‍🤝‍👨🏻",
+	"👬🏼":"👨🏼‍🤝‍👨🏼",
+	"👬🏽":"👨🏽‍🤝‍👨🏽",
+	"👬🏾":"👨🏾‍🤝‍👨🏾",
+	"👬🏿":"👨🏿‍🤝‍👨🏿",
+	"💏":"🧑‍❤️‍💋‍🧑",
+	"💏🏻":"🧑🏻‍❤️‍💋‍🧑🏻",
+	"💏🏼":"🧑🏼‍❤️‍💋‍🧑🏼",
+	"💏🏽":"🧑🏽‍❤️‍💋‍🧑🏽",
+	"💏🏾":"🧑🏾‍❤️‍💋‍🧑🏾",
+	"💏🏿":"🧑🏿‍❤️‍💋‍🧑🏿",
+	"💑":"🧑‍❤️‍🧑",
+	"💑🏻":"🧑🏻‍❤️‍🧑🏻",
+	"💑🏼":"🧑🏼‍❤️‍🧑🏼",
+	"💑🏽":"🧑🏽‍❤️‍🧑🏽",
+	"💑🏾":"🧑🏾‍❤️‍🧑🏾",
+	"💑🏿":"🧑🏿‍❤️‍🧑🏿",
+}
+
+function decode_couple(str) {
+	str = hardcoded_couples[str] || str
+	let m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
+	if (!m) return null
+	let [_,person1,type,person2] = m
+	return {person1,type,person2}
+}
+
 // read/parse lines from files
 for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 	for await (let line of lines(file)) {
@@ -76,19 +118,31 @@ for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 			return true
 		})
 		
-		let couple = null
-		if (/^couple with heart(:|$)/.test(name))
-			couple = "heart"
-		else if (/^kiss(:|$)/.test(name))
-			couple = "kiss"
-		else if (/^(people|women|woman and man|men) holding hands(:|$)/.test(name))
-			couple = "hands"
-		if (couple && codes.length > 2)
-			continue
-		
 		let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
 		
 		let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
+		
+		let couple = decode_couple(str)
+		if (couple) {
+			// use the couples with 2 of the same person-type as sources
+			let type = {"🤝":"hands","❤️‍💋":"kiss","❤️":"heart"}[couple.type];
+			if (couple.person1==couple.person2) {
+				let id = {"🧑":0,"🧑🏻":1,"🧑🏼":2,"🧑🏽":3,"🧑🏾":4,"🧑🏿":5,"👨":6+0,"👨🏻":6+1,"👨🏼":6+2,"👨🏽":6+3,"👨🏾":6+4,"👨🏿":6+5,"👩":12+0,"👩🏻":12+1,"👩🏼":12+2,"👩🏽":12+3,"👩🏾":12+4,"👩🏿":12+5}[couple.person1]
+				couples.push({
+					couple: [type, id, "left"],
+					glyphName: `couple_${type}_${id}_left`,
+					file,
+				})
+				couples.push({
+					couple: [type, id, "right"],
+					glyphName: `couple_${type}_${id}_right`,
+					file,
+				})
+			}
+			// only keep the simple single-glyph versions, for situations where ligatures aren't supported etc.
+			if (codes.length > 2)
+				continue
+		}
 		
 		emojis.push({
 			codes: codes2,
@@ -145,6 +199,15 @@ for (let data of emojis) {
 		vs16: v16,
 		file: data.file,
 		glyphName: gname(data.codes)
+	})
+}
+
+for (let data of couples) {
+	print_item({
+		codes: null,
+		file: data.file,
+		glyphName: data.glyphName,
+		couple: data.couple,
 	})
 }
 

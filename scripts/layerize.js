@@ -6,6 +6,16 @@ import edata from '../data/edata.json' with {type:'json'}
 
 let layers = new Map()
 
+function split_in_half(paths) {
+	let all = []
+	for (let [p,c] of paths)
+		for (let s of p)
+			all.push([[s],c])
+	let split = [all.splice(0, all.length/2), all]
+	// TODO: remerge the shapes !!!
+	return split
+}
+
 let glyphs = []
 let bar = new Bar(edata.length)
 let w1 = 0
@@ -14,7 +24,10 @@ bar.start()
 for (let em of edata) {
 	bar.step(w1++)
 	
-	glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
+	if (em.couple)
+		glyphs.push({glyphName:em.glyphName, vs16:em.vs16, couple:em.couple})
+	else
+		glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
 	if (!em.file)
 		continue
 	
@@ -25,6 +38,13 @@ for (let em of edata) {
 	// also; would be nice if we could sync this task with fontforge so it imports the layers as we produce them
 	console.info(`processing svg: ‘${em.file}.svg’`)
 	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
+	if (em.couple) {
+		let halfs = split_in_half(paths)
+		if (em.couple[2]=="left")
+			paths = halfs[0]
+		else
+			paths = halfs[1]
+	}
 	
 	let sc = 0
 	let nl = 0
