@@ -11,13 +11,13 @@ twemoji_commit = c82a400de008d671167a73d82cddd37de3d583e1
 build/Twemoji.otf: build/glyphs.otf build/cpal.ttx build/colr.ttx data/import.ttx
 	ttx -b -v -m build/glyphs.otf -o build/Twemoji.otf data/import.ttx
 
-data/edata.json: data/emoji-test.txt scripts/parse-emoji-test.js
-	node scripts/parse-emoji-test.js >data/edata.json
+build/edata.json: data/emoji-test.txt scripts/parse-emoji-test.js
+	node scripts/parse-emoji-test.js >build/edata.json
 
 build/colr.ttx build/cpal.ttx: build/layers.json scripts/make-colr.js scripts/xml.js
 	node scripts/make-colr.js
 
-build/layers.json build/glyphs.json: data/edata.json scripts/layerize.js scripts/xml.js scripts/read-svg.js twemoji/assets/svg
+build/layers.json build/glyphs.json: build/edata.json scripts/layerize.js scripts/xml.js scripts/read-svg.js twemoji/assets/svg
 	node scripts/layerize.js
 
 # todo: i would like to split this one into 2 steps

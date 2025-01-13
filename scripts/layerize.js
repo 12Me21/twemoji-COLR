@@ -2,7 +2,7 @@ import {process_svg} from './read-svg.js'
 import Fs from 'fs'
 import Bar from './progress.js'
 
-import edata from '../data/edata.json' with {type:'json'}
+import edata from '../build/edata.json' with {type:'json'}
 
 let layers = new Map()
 
