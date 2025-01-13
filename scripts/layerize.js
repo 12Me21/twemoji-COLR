@@ -6,13 +6,25 @@ import edata from '../data/edata.json' with {type:'json'}
 
 let layers = new Map()
 
+function merge_shapes(p1) {
+	let paths = []
+	let currentPath = null
+	for (let [shape, color] of p1) {
+		if (!currentPath || currentPath[1]!=color) {
+			paths.push(currentPath = [[], color])
+		}
+		currentPath[0].push(shape)
+	}
+	return paths
+}
+
 function split_in_half(paths) {
 	let all = []
 	for (let [p,c] of paths)
 		for (let s of p)
 			all.push([[s],c])
 	let split = [all.splice(0, all.length/2), all]
-	// TODO: remerge the shapes !!!
+	// note that this doesn't re-merge by color !
 	return split
 }
 
@@ -38,12 +50,14 @@ for (let em of edata) {
 	// also; would be nice if we could sync this task with fontforge so it imports the layers as we produce them
 	console.info(`processing svg: ‘${em.file}.svg’`)
 	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
+	// hack
 	if (em.couple) {
 		let halfs = split_in_half(paths)
 		if (em.couple[2]=="left")
 			paths = halfs[0]
 		else
 			paths = halfs[1]
+		paths = merge_shapes(paths)
 	}
 	
 	let sc = 0

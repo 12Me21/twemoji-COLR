@@ -139,7 +139,7 @@ for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
 					file,
 				})
 			}
-			// only keep the simple single-glyph versions, for situations where ligatures aren't supported etc.
+			// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
 			if (codes.length > 2)
 				continue
 		}
