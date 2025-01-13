@@ -128,7 +128,7 @@ def create_layer(name, shapecount):
 
 def create_couple(name, cdata):
 	glyph = f.createChar(-1, name)
-	glyph.width = round(WIDTH/2)
+	glyph.width = WIDTH
 	
 	ctype = cdata[0]
 	num = cdata[1]
@@ -167,6 +167,8 @@ for couple in decouples:
 	after = tuple([gname(ord(c)) for c in couple[1]])
 	f[before].addPosSub('decouple-1', after)
 
+left_all = []
+right_all = []
 # and now, we try
 for cname in couples:
 	name = "couple_"+cname
@@ -180,6 +182,8 @@ for cname in couples:
 #		glyph.width = round(WIDTH/2)
 #		glyph.addPosSub(name+"_left2", [person_list[x]] + [gname(ord(b)) for b in before])
 		left_list += [f"{name}_{x}_left"]
+		left_all += [f"{name}_{x}_left"]
+		right_all += [f"{name}_{x}_right"]
 		
 #		glyph2 = f.createChar(-1, f"{name}_{x}_right")
 #		glyph2.width = round(WIDTH/2)
@@ -195,6 +199,10 @@ for cname in couples:
 #1011844 bad
 # right lookup contains 1 zwj: 1012012
 #1000196
+
+f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
+print(left_all, right_all)
+f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 f.ascent = EM - DESCENT
