@@ -38,8 +38,11 @@ build/colr.ttx build/cpal.ttx: build/layers.json scripts/make-colr.js scripts/xm
 # 1: create glyphs, import the layers, simplify outlines, etc.
 # 2: apply metrics to that font file (which does involve shifting the outlines around, to set the descent/bearings)
 # use the fontforge api to create the font file and import the layers
-build/glyphs.otf: build/glyphs.json scripts/fontforge.py
+build/layers.sfd: build/glyphs.json scripts/fontforge.py
 	fontforge -script scripts/fontforge.py <build/glyphs.json
+
+build/glyphs.otf: build/layers.sfd scripts/font2.py
+	fontforge -script scripts/font2.py
 
 # generate the final font file (adding the CPAL and COLR tables because fontforge doesn't support that)
 build/Twemoji.otf: build/glyphs.otf build/cpal.ttx build/colr.ttx data/import.ttx

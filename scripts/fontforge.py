@@ -5,7 +5,7 @@ import json
 glyphList = json.load(sys.stdin)
 
 VIEWBOX = 36 # viewbox of twemoji svgs
-WATERLINE = 8 # how far up the baseline should be (in svg units)
+WATERLINE = 6 # how far up the baseline should be (in svg units)
 MARGIN = 1 # left/right bearing, in svg units
 EMOJI_SCALE = 1.125 # in `em` units. i.e. at a font size of 16px, emojis will be 18px
 
@@ -17,43 +17,11 @@ WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
 
 f = fontforge.font()
 f.encoding = 'UnicodeFull'
-f.copyright = '(c) my balls'
-f.design_size = 16
-f.fontname = "TwemojiMozilla"
-f.familyname = "Twemoji Mozilla"
-f.fullname = "Twemoji Mozilla"
-f.os2_vendor = "12;;"
 
 # temporary metrics, to facilitate importing the svgs
 f.em = VIEWBOX * SCALE
 f.ascent = 0
 f.descent = VIEWBOX * SCALE
-
-f.upos = -108 # idk ?? nothing uses this anyway
-f.uwidth = 2 * SCALE
-
-f.os2_winascent_add = False
-f.os2_windescent_add = False
-f.os2_typoascent_add = False
-f.os2_typodescent_add = False
-f.hhea_ascent_add = False
-f.hhea_descent_add = False
-
-f.os2_winascent = (VIEWBOX-WATERLINE)*SCALE + SCALE
-f.os2_windescent = (WATERLINE)*SCALE + SCALE
-f.os2_typoascent = f.os2_winascent #round(712/768*EM) # idr how i calculated these, but i did. UPDATE: i got them from the hhea ascent/descent values in my copy of Roboto.
-f.os2_typodescent = -f.os2_windescent # round(-188/768*EM)
-f.os2_typolinegap = 0
-f.hhea_ascent = f.os2_typoascent
-f.hhea_descent = f.os2_typodescent
-f.hhea_linegap = 0
-
-# this causes issues with fallback for me, for now
-#f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
-#f.os2_family_class = 3072
-
-guessed_gids = [[],[],[]]
-
 
 couples = {
 	"hands": ("‍🤝", "‍"),
@@ -113,16 +81,6 @@ def create_layer(name, shapecount):
 	# load each shape in the layer, being sure to *individually* correct their directions, otherwise removeOverlap() will break
 	for i in range(0, shapecount):
 		glyph.importOutlines('build/layers/'+name+"_"+str(i)+".svg", simplify=False, correctdir=True, scale=True)
-	glyph.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE])
-	# merge all the shapes together
-	glyph.removeOverlap()
-	glyph.correctDirection()
-	# apply various simplifications
-	glyph.simplify(0.5, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
-	glyph.round()
-	glyph.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
-	glyph.canonicalContours()
-	glyph.canonicalStart()
 
 def create_couple(name, cdata):
 	glyph = f.createChar(-1, name)
@@ -157,6 +115,19 @@ for g in glyphList:
 	else:
 		create_layer(name, g['shapeCount'])
 
+# now simplify all the glyphs at once
+f.selection.all()
+f.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE], ('noWidth'))
+# merge all the shapes together
+f.removeOverlap()
+f.correctDirection()
+# apply various simplifications
+f.simplify(0.5, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
+f.round()
+f.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreextrema'), 0.2, 7.2, 7.2)
+f.canonicalContours()
+f.canonicalStart()
+		
 # explode and kill them !!!
 decouples = json.load(open("data/couples-decompose.json", "r"))
 for couple in decouples:
@@ -193,11 +164,6 @@ for cname in couples:
 f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
-# now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
-f.ascent = EM - DESCENT
-f.descent = DESCENT
-assert f.em == EM
-
-f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))
+f.save("build/layers.sfd")
 
 # todo: use setTableData to create cpal/colr
