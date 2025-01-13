@@ -186,12 +186,6 @@ for (let data of emojis) {
 //	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
 //		continue
 	
-	if (data.file)
-		if (!Fs.existsSync(`twemoji/assets/svg/${data.file}.svg`)) {
-			data.file = null
-			console.warn(`missing svg ${data.file}.svg, for`, data.codes)
-		}
-	
 	let v16 = data.codes.length==1 && vs16[data.codes[0]] || undefined
 	
 	print_item({

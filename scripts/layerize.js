@@ -48,8 +48,13 @@ for (let em of edata) {
 	
 	// todo: would be nice if we could like, tell it to start loading the next file right away so it will be ready by the time the current one processes.
 	// also; would be nice if we could sync this task with fontforge so it imports the layers as we produce them
-	console.info(`processing svg: ‘${em.file}.svg’`)
-	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
+	let filename = `twemoji/assets/svg/${em.file}.svg`
+	console.warn(`processing svg: ‘${filename}’`)
+	if (!Fs.existsSync(filename)) {
+		console.error(`missing svg ‘${filename}’, for`, em.codes)
+		continue
+	}
+	let paths = process_svg(filename)
 	// hack
 	if (em.couple) {
 		let halfs = split_in_half(paths)
