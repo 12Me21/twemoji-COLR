@@ -1,3 +1,7 @@
+import fontforge
+import sys
+import json
+
 VIEWBOX = 36 # viewbox of twemoji svgs
 WATERLINE = 6 # how far up the baseline should be (in svg units)
 MARGIN = 1 # left/right bearing, in svg units
@@ -41,10 +45,122 @@ f.hhea_linegap = 0
 #f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
 #f.os2_family_class = 3072
 
+def gname(cp):
+	if (cp>=0x10000):
+		return "u%X" % cp
+	return "uni%04X" % cp
+
+def lname(codes):
+	return "u"+"_".join("%04X" % c for c in codes)
+
+couples = {
+	"hands": ("‍🤝", "‍"),
+	"kiss": ("‍❤‍💋", "‍"),
+	"heart": ("‍❤", "‍"),
+}
+
+# destroy couple emojis !!
+f.addLookup('decouple', 'gsub_multiple', None, [("ccmp",[("DFLT",["dflt"])])], 'any')
+f.addLookupSubtable('decouple', 'decouple-1')
+
+# recreate them
+f.addLookup('couples', 'gsub_contextchain', None, [("ccmp",[("DFLT",["dflt"])])], 'decouple')
+
+for c in couples:
+	name = "couple_"+c
+	
+	f.addLookup(name+"_left", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_left", name+"_left2")
+	f.addLookup(name+"_right", 'gsub_ligature', None, ())
+	f.addLookupSubtable(name+"_right", name+"_right2")
+
+person_list = []
+for gender in range(3):
+	base = ord("🧑👨👩"[gender])
+	for skin in range(6):
+		person_list += [gname(base) if skin==0 else lname([base,0x1F3FB+skin-1])]
+
+def create_couple(name, cdata):
+	glyph = f.createChar(-1, name)
+	
+	ctype = cdata[0]
+	num = cdata[1]
+	side = cdata[2]
+	
+	c = couples[ctype]
+	cname = "couple_"+ctype
+	before = c[0]
+	after = c[1]
+	
+	if side=="left":
+		glyph.addPosSub(cname+"_left2", [person_list[num]] + [gname(ord(b)) for b in before])
+	else:
+		glyph.addPosSub(cname+"_right2", [gname(ord(b)) for b in after] + [person_list[num]])
+
+glyphList = json.load(open('build/glyphs.json'))
+for g in glyphList:
+	name = str(g['glyphName'])
+	typ = g['type']
+	if typ=='couple':
+		sys.stderr.write('halfcouple '+name+"\n")
+		create_couple(name, g['couple'])
+
+# explode and kill them !!!
+decouples = json.load(open("data/couples-decompose.json", "r"))
+for couple in decouples:
+	before = lname([ord(c) for c in couple[0]])
+	after = tuple([gname(ord(c)) for c in couple[1]])
+	print(before)
+	f[before].addPosSub('decouple-1', after)
+
+left_all = []
+right_all = []
+# and now, we try
+for cname in couples:
+	name = f"couple_{cname}"
+	c = couples[cname]
+	before = c[0]
+	after = c[1] # note this must be a single character only !
+	
+	left_list = []
+	for x in range(0, 3*6):
+		left_list += [f"{name}_{x}_left"]
+		left_all += [f"{name}_{x}_left"]
+		right_all += [f"{name}_{x}_right"]
+	
+	covs_person = "["+" ".join(person_list)+"]"
+	covs_before = " ".join(["["+gname(ord(b))+"]" for b in before])
+	covs_after = " ".join(["["+gname(ord(b))+"]" for b in after])
+	covs_left = "["+" ".join(left_list)+"]"
+	
+	rule1 = f"| {covs_person} @<{name}_left> {covs_before} | {covs_after} {covs_person}"
+	rule2 = f"{covs_left} | {covs_after} @<{name}_right> {covs_person} |"
+	
+	f.addContextualSubtable('couples', name+"_2", 'coverage', rule2)
+	f.addContextualSubtable('couples', name+"_1", 'coverage', rule1)
+#1012044
+#1012240
+#1011844 bad
+# right lookup contains 1 zwj: 1012012
+#1000196
+
+f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
+f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
+
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 f.ascent = EM - DESCENT
 f.descent = DESCENT
 assert f.em == EM
+
+for gname in f:
+	glyph = f[gname]
+	cp = glyph.unicode
+	if cp==0x200D or cp==0x20E3 or cp==0xFE0F or cp>=0xE0000:
+		glyph.width = 0
+	else:
+		glyph.width = WIDTH
+	
+f.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE], ('noWidth'))
 
 print(f.em)
 f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))

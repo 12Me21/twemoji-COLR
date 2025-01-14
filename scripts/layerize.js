@@ -37,9 +37,9 @@ for (let em of edata) {
 	bar.step(w1++)
 	
 	if (em.couple)
-		glyphs.push({glyphName:em.glyphName, vs16:em.vs16, couple:em.couple})
+		glyphs.push({type:'couple', glyphName:em.glyphName, couple:em.couple})
 	else
-		glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
+		glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
 	if (!em.file)
 		continue
 	
@@ -109,7 +109,7 @@ for (let [str, [lname, shapes]] of layers) {
 		
 		Fs.writeFileSync("build/layers/"+lname2+".svg", svg)
 	}
-	glyphs.push({glyphName:lname,shapeCount:shapes.length})
+	glyphs.push({type:'layer', glyphName:lname, shapeCount:shapes.length})
 }
 bar.end()
 
