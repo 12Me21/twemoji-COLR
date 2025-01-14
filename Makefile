@@ -36,11 +36,11 @@ build/colr.ttx build/cpal.ttx: build/layers.json scripts/make-colr.js scripts/xm
 scripts/fontforge.py scripts/font2.py: scripts/common.py
 
 # use the fontforge api to create the font file and import the layers
-build/layers.sfd: build/glyphs.json scripts/fontforge.py
+build/glyphs.sfd: build/glyphs.json scripts/fontforge.py
 	fontforge -script scripts/fontforge.py <build/glyphs.json
 
 # set metrics/metadata and create extra lookups for couples emojis
-build/glyphs.otf: build/layers.sfd scripts/font2.py
+build/glyphs.otf: build/glyphs.sfd scripts/font2.py
 	fontforge -script scripts/font2.py
 
 # generate the final font file (adding the CPAL and COLR tables because fontforge doesn't support that)

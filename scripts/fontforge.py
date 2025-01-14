@@ -60,6 +60,6 @@ f.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreex
 f.canonicalContours()
 f.canonicalStart()
 
-f.save("build/layers.sfd")
+f.save("build/glyphs.sfd")
 
 # todo: use setTableData to create cpal/colr
