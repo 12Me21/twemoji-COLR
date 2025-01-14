@@ -1,16 +1,13 @@
 import fontforge
 import sys
 import json
+from common import *
 
-VIEWBOX = 36 # viewbox of twemoji svgs
 WATERLINE = 6 # how far up the baseline should be (in svg units)
 MARGIN = 1 # left/right bearing, in svg units
-EMOJI_SCALE = 1.125 # in `em` units. i.e. at a font size of 16px, emojis will be 18px
-
-SCALE = 24 # upscale factor for svg units
+EMOJI_SCALE = 1.125 # in `em` units. 1.125 means, at a font size of 16px, emojis will be 18px
 
 EM = round((VIEWBOX / EMOJI_SCALE) * SCALE)
-DESCENT = round(0.2 * EM) # doesnt really matter for display itself, but we do this to match other fonts
 WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
 
 f = fontforge.open("build/layers.sfd")
@@ -44,14 +41,6 @@ f.hhea_linegap = 0
 # this causes issues with fallback for me, for now
 #f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
 #f.os2_family_class = 3072
-
-def gname(cp):
-	if (cp>=0x10000):
-		return "u%X" % cp
-	return "uni%04X" % cp
-
-def lname(codes):
-	return "u"+"_".join("%04X" % c for c in codes)
 
 couples = {
 	"hands": ("‍🤝", "‍"),
@@ -110,7 +99,6 @@ decouples = json.load(open("data/couples-decompose.json", "r"))
 for couple in decouples:
 	before = lname([ord(c) for c in couple[0]])
 	after = tuple([gname(ord(c)) for c in couple[1]])
-	print(before)
 	f[before].addPosSub('decouple-1', after)
 
 left_all = []
@@ -148,8 +136,9 @@ f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
-f.ascent = EM - DESCENT
-f.descent = DESCENT
+descent = round(0.2 * EM) # set the ratio of ascent:descent to 5:1 (doesnt really matter for display itself, but we do this to match other fonts)
+f.ascent = EM - descent
+f.descent = descent
 assert f.em == EM
 
 for gname in f:

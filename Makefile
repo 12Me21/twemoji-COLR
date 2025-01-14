@@ -33,14 +33,13 @@ build/layers.json build/glyphs.json: build/edata.json scripts/layerize.js script
 build/colr.ttx build/cpal.ttx: build/layers.json scripts/make-colr.js scripts/xml.js
 	node scripts/make-colr.js
 
-# todo: i would like to split this one into 2 steps
-#  so we can adjust metrics without having to re-import all the layers.
-# 1: create glyphs, import the layers, simplify outlines, etc.
-# 2: apply metrics to that font file (which does involve shifting the outlines around, to set the descent/bearings)
+scripts/fontforge.py scripts/font2.py: scripts/common.py
+
 # use the fontforge api to create the font file and import the layers
 build/layers.sfd: build/glyphs.json scripts/fontforge.py
 	fontforge -script scripts/fontforge.py <build/glyphs.json
 
+# set metrics/metadata and create extra lookups for couples emojis
 build/glyphs.otf: build/layers.sfd scripts/font2.py
 	fontforge -script scripts/font2.py
 

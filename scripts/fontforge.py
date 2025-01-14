@@ -1,19 +1,9 @@
 import fontforge
 import sys
 import json
+from common import *
 
 glyphList = json.load(sys.stdin)
-
-VIEWBOX = 36 # viewbox of twemoji svgs
-WATERLINE = 6 # how far up the baseline should be (in svg units)
-MARGIN = 1 # left/right bearing, in svg units
-EMOJI_SCALE = 1.125 # in `em` units. i.e. at a font size of 16px, emojis will be 18px
-
-SCALE = 24 # upscale factor for svg units
-
-EM = round((VIEWBOX / EMOJI_SCALE) * SCALE)
-DESCENT = round(0.2 * EM) # doesnt really matter for display itself, but we do this to match other fonts
-WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
 
 f = fontforge.font()
 f.encoding = 'UnicodeFull'
@@ -25,14 +15,6 @@ f.descent = VIEWBOX * SCALE
 
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
-
-def gname(cp):
-	if (cp>=0x10000):
-		return "u%X" % cp
-	return "uni%04X" % cp
-
-def lname(codes):
-	return "u"+"_".join("%04X" % c for c in codes)
 
 def create_unicode(cp, vs16):
 	glyph = f.createChar(cp, gname(cp))
