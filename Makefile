@@ -19,7 +19,7 @@ twemoji/assets/svg:
 
 data/emoji-test.txt:
 	curl --compressed 'https://www.unicode.org/Public/emoji/15.1/emoji-test.txt' -o data/emoji-test.txt
-
+	patch <data/twemoji-nonstandard.diff
 
 # parse unicode's emoji-test.txt file to create a list of emojis (and other supporting glyphs)
 build/edata.json: data/emoji-test.txt data/extra-emoji-test.txt scripts/parse-emoji-test.js

@@ -90,66 +90,65 @@ function decode_couple(str) {
 }
 
 // read/parse lines from files
-for (let file of ['data/emoji-test.txt', 'data/extra-emoji-test.txt'])
-	for await (let line of lines(file)) {
-		let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
-		if (!match) continue
-		let [, codes, qual, str, version, name] = match
-		codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
-		
-		// filter out varsel16s, create list of which chars need them
-		let prev
-		let codes2 = codes.filter(c=>{
-			if (prev) {
-				if (+c == 0xFE0F) {
-					if (vs16[prev]===undefined)
-						vs16[prev] = 2
-					else
-						vs16[prev] = 1
-					return false
-				} else {
-					if (vs16[prev] >= 1) {
-						vs16[prev] = 1
-					} else
-						vs16[prev] = 0
-				}
+for await (let line of lines('data/emoji-test.txt')) {
+	let match = /^(.*?); *?(fully-qualified|component) *?# (.*?) E(.*?) (.*?)$/.exec(line)
+	if (!match) continue
+	let [, codes, qual, str, version, name] = match
+	codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
+	
+	// filter out varsel16s, create list of which chars need them
+	let prev
+	let codes2 = codes.filter(c=>{
+		if (prev) {
+			if (+c == 0xFE0F) {
+				if (vs16[prev]===undefined)
+					vs16[prev] = 2
+				else
+					vs16[prev] = 1
+				return false
+			} else {
+				if (vs16[prev] >= 1) {
+					vs16[prev] = 1
+				} else
+					vs16[prev] = 0
 			}
-			prev = c
-			return true
-		})
-		
-		let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
-		
-		let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
-		
-		let couple = decode_couple(str)
-		if (couple) {
-			// use the couples with 2 of the same person-type as sources
-			let type = {"🤝":"hands","❤️‍💋":"kiss","❤️":"heart"}[couple.type];
-			if (couple.person1==couple.person2) {
-				let id = {"🧑":0,"🧑🏻":1,"🧑🏼":2,"🧑🏽":3,"🧑🏾":4,"🧑🏿":5,"👨":6+0,"👨🏻":6+1,"👨🏼":6+2,"👨🏽":6+3,"👨🏾":6+4,"👨🏿":6+5,"👩":12+0,"👩🏻":12+1,"👩🏼":12+2,"👩🏽":12+3,"👩🏾":12+4,"👩🏿":12+5}[couple.person1]
-				couples.push({
-					couple: [type, id, "left"],
-					glyphName: `couple_${type}_${id}_left`,
-					file,
-				})
-				couples.push({
-					couple: [type, id, "right"],
-					glyphName: `couple_${type}_${id}_right`,
-					file,
-				})
-			}
-			// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
-			if (codes.length > 2)
-				continue
 		}
-		
-		emojis.push({
-			codes: codes2,
-			file,
-			version: +version,
-		})
+		prev = c
+		return true
+	})
+	
+	let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
+	
+	let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
+	
+	let couple = decode_couple(str)
+	if (couple) {
+		// use the couples with 2 of the same person-type as sources
+		let type = {"🤝":"hands","❤️‍💋":"kiss","❤️":"heart"}[couple.type];
+		if (couple.person1==couple.person2) {
+			let id = {"🧑":0,"🧑🏻":1,"🧑🏼":2,"🧑🏽":3,"🧑🏾":4,"🧑🏿":5,"👨":6+0,"👨🏻":6+1,"👨🏼":6+2,"👨🏽":6+3,"👨🏾":6+4,"👨🏿":6+5,"👩":12+0,"👩🏻":12+1,"👩🏼":12+2,"👩🏽":12+3,"👩🏾":12+4,"👩🏿":12+5}[couple.person1]
+			couples.push({
+				couple: [type, id, "left"],
+				glyphName: `couple_${type}_${id}_left`,
+				file,
+			})
+			couples.push({
+				couple: [type, id, "right"],
+				glyphName: `couple_${type}_${id}_right`,
+				file,
+			})
+		}
+		// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
+		if (codes.length > 2)
+			continue
 	}
+	
+	emojis.push({
+		codes: codes2,
+		file,
+		version: +version,
+	})
+}
 
 function gname(codes) {
 	return codes.map((n,short)=>{
