@@ -17,12 +17,14 @@ twemoji/assets/svg:
 	git clone --filter=blob:none --depth=1 --no-checkout -- $(twemoji_repo) twemoji
 	cd twemoji && git sparse-checkout init && git sparse-checkout set assets/svg && git checkout $(twemoji_commit)
 
-data/emoji-test.txt:
-	curl --compressed 'https://www.unicode.org/Public/emoji/15.1/emoji-test.txt' -o data/emoji-test.txt
-	patch <data/twemoji-nonstandard.diff
+data/unicode-emoji-test.txt:
+	curl --compressed 'https://www.unicode.org/Public/emoji/15.1/emoji-test.txt' -o data/unicode-emoji-test.txt
+
+data/emoji-test.txt: data/unicode-emoji-test.txt data/twemoji-nonstandard.sed
+	sed -f data/twemoji-nonstandard.sed <data/unicode-emoji-test.txt >data/emoji-test.txt
 
 # parse unicode's emoji-test.txt file to create a list of emojis (and other supporting glyphs)
-build/edata.json: data/emoji-test.txt data/extra-emoji-test.txt scripts/parse-emoji-test.js
+build/edata.json: data/emoji-test.txt scripts/parse-emoji-test.js
 	node scripts/parse-emoji-test.js >build/edata.json
 
 # load the svg files and split them into layers
