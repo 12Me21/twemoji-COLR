@@ -1,6 +1,6 @@
 --- data/emoji-test.txt	2025-01-15 01:48:47.128816947 -0800
 +++ data/emoji-test-modified.txt	2025-01-15 01:48:37.568822640 -0800
-@@ -1758,2 +1758,17 @@
+@@ -1758,1 +1758,16 @@
  1F9D1 1F3FF 200D 1F384                                 ; fully-qualified     # 🧑🏿‍🎄 E13.0 mx claus: dark skin tone
 +# nonstandard constructions for MxClaus gender variants (probably added by accident)
 +# they do actually use separate svg files, so i count them as separate emojis
@@ -17,8 +17,7 @@
 +1F469 1F3FD 200D 1F384                                 ; fully-qualified     # 👩🏽‍🎄 E0.0 woman mx claus: medium skin tone
 +1F469 1F3FE 200D 1F384                                 ; fully-qualified     # 👩🏾‍🎄 E0.0 woman mx claus: medium-dark skin tone
 +1F469 1F3FF 200D 1F384                                 ; fully-qualified     # 👩🏿‍🎄 E0.0 woman mx claus: dark skin tone
- 1F9B8                                                  ; fully-qualified     # 🦸 E11.0 superhero
-@@ -2522,2 +2537,33 @@
+@@ -2522,1 +2537,32 @@
  1F574 1F3FF                                            ; fully-qualified     # 🕴🏿 E4.0 person in suit levitating: dark skin tone
 +# PersonInSuitLevitating gender variants
 +# less qualified variants were inferred from emojis with similar behavior like "⛹"
@@ -51,8 +50,7 @@
 +1F574 1F3FD 200D 2640                                  ; minimally-qualified # 🕴🏽‍♀ E0.0 woman in suit levitating: medium skin tone
 +1F574 1F3FE 200D 2640                                  ; minimally-qualified # 🕴🏾‍♀ E0.0 woman in suit levitating: medium-dark skin tone
 +1F574 1F3FF 200D 2640                                  ; minimally-qualified # 🕴🏿‍♀ E0.0 woman in suit levitating: dark skin tone
- 1F46F                                                  ; fully-qualified     # 👯 E0.6 people with bunny ears
-@@ -2598,2 +2644,8 @@
+@@ -2598,1 +2644,7 @@
  26F7                                                   ; unqualified         # ⛷ E0.7 skier
 +# Skier skin color variants
 +26F7 1F3FB                                             ; fully-qualified     # ⛷🏻 E0.0 skier: light skin tone
@@ -60,9 +58,7 @@
 +26F7 1F3FD                                             ; fully-qualified     # ⛷🏽 E0.0 skier: medium skin tone
 +26F7 1F3FE                                             ; fully-qualified     # ⛷🏾 E0.0 skier: medium-dark skin tone
 +26F7 1F3FF                                             ; fully-qualified     # ⛷🏿 E0.0 skier: dark skin tone
- 1F3C2                                                  ; fully-qualified     # 🏂 E0.6 snowboarder
-@@ -4000,2 +4052,4 @@
+@@ -4000,1 +4052,3 @@
  1F5FD                                                  ; fully-qualified     # 🗽 E0.6 Statue of Liberty
 +# Shibuya
 +E50A                                                   ; fully-qualified     #  E0.0 Shibuya
- 
