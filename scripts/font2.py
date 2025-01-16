@@ -6,7 +6,7 @@ from common import *
 WATERLINE = 6 # how far up the baseline should be (in svg units)
 MARGIN = 1 # left/right bearing, in svg units
 EMOJI_SCALE = 1.125 # in `em` units. 1.125 means, at a font size of 16px, emojis will be 18px
-FULLNAME = "Apple Color Emoji"
+FULLNAME = "Twemoji COLR"
 
 EM = round((VIEWBOX / EMOJI_SCALE) * SCALE)
 WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
@@ -16,7 +16,7 @@ f = fontforge.open("build/glyphs.sfd")
 f.fontname = FULLNAME.replace(" ", "")
 f.familyname = FULLNAME
 f.fullname = FULLNAME
-f.weight = "Book"
+f.weight = "Regular"
 f.version = "15.150" # i'll just use the emoji version (15.1)
 
 f.os2_vendor = "12;;"
