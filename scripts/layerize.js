@@ -2,9 +2,31 @@ import {process_svg} from './read-svg.js'
 import Fs from 'fs'
 import Bar from './progress.js'
 
-import edata from '../data/edata.json' with {type:'json'}
+import edata from '../build/edata.json' with {type:'json'}
 
 let layers = new Map()
+
+function merge_shapes(p1) {
+	let paths = []
+	let currentPath = null
+	for (let [shape, color] of p1) {
+		if (!currentPath || currentPath[1]!=color) {
+			paths.push(currentPath = [[], color])
+		}
+		currentPath[0].push(shape)
+	}
+	return paths
+}
+
+function split_in_half(paths) {
+	let all = []
+	for (let [p,c] of paths)
+		for (let s of p)
+			all.push([[s],c])
+	let split = [all.splice(0, all.length/2), all]
+	// note that this doesn't re-merge by color !
+	return split
+}
 
 let glyphs = []
 let bar = new Bar(edata.length)
@@ -14,7 +36,10 @@ bar.start()
 for (let em of edata) {
 	bar.step(w1++)
 	
-	glyphs.push({glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
+	if (em.couple)
+		glyphs.push({type:'couple', glyphName:em.glyphName, couple:em.couple})
+	else
+		glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
 	if (!em.file)
 		continue
 	
@@ -23,8 +48,22 @@ for (let em of edata) {
 	
 	// todo: would be nice if we could like, tell it to start loading the next file right away so it will be ready by the time the current one processes.
 	// also; would be nice if we could sync this task with fontforge so it imports the layers as we produce them
-	console.info(`processing svg: ‘${em.file}.svg’`)
-	let paths = process_svg("twemoji/assets/svg/"+em.file+".svg")
+	let filename = `twemoji/assets/svg/${em.file}.svg`
+	console.warn(`processing svg: ‘${filename}’`)
+	if (!Fs.existsSync(filename)) {
+		console.error(`missing svg ‘${filename}’, for`, em.codes)
+		continue
+	}
+	let paths = process_svg(filename)
+	// hack
+	if (em.couple) {
+		let halfs = split_in_half(paths)
+		if (em.couple[2]=="left")
+			paths = halfs[0]
+		else
+			paths = halfs[1]
+		paths = merge_shapes(paths)
+	}
 	
 	let sc = 0
 	let nl = 0
@@ -70,7 +109,7 @@ for (let [str, [lname, shapes]] of layers) {
 		
 		Fs.writeFileSync("build/layers/"+lname2+".svg", svg)
 	}
-	glyphs.push({glyphName:lname,shapeCount:shapes.length})
+	glyphs.push({type:'layer', glyphName:lname, shapeCount:shapes.length})
 }
 bar.end()
 

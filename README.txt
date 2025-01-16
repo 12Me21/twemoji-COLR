@@ -1,6 +1,10 @@
-inspired by https://github.com/mozilla/twemoji-colr
+Twitter emoji font, in OpenType COLR v0 format
+- supported by all browsers and operating systems from the past 5-10 years
+- relatively small filesize (1 MB)
+- contains Unicode emoji v15.1 (plus extended couples emojis, and a few extras)
+- font family name: "Twemoji COLR"
 
-supports unicode emoji v15.1
+inspired by https://github.com/mozilla/twemoji-colr
 
 Dependencies:
 - nodejs
