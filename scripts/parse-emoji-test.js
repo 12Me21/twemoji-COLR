@@ -210,3 +210,12 @@ process.stdout.write("\n]\n")
 // 2: ligature (constructed from multiple glyphs via ligature subsitution)
 // 3: couple half (constructed from a contextual chaining lookup)
 // - and each of these may have a .file, indicating that it appears in the COLR table, and has layers to process
+
+// or i guess like,  what are the attributes of a glyph
+// - all [glyph name]
+// - is in cmap table [codepoint, variation selector flags]
+// - is in basic ligature lookup [list of codepoints — or glyph names] - ah if we use glyph names, then we can do multiple steps of substituion (e.g. person+skin3 -> person_skin3, person_skin3+zwj+school -> teacher_skin3) but idk if this is actually smaller... didn't we already write code to try? what ever happened to that?
+// - is in hardcoded couple deconstruction lookup [list of glyphs to deconstruct into]
+// - is in couple halfs substitution, and couple halfs kerning [source person type, couple type, which half] - do we store these attributes like enums or as lists of glyph names (the former is simpler, the latter is more extensible)
+// - is in COLR table (i.e. has layers) [svg file name]
+// - is a layer [list of shapes to load? / how many]

@@ -41,6 +41,9 @@ scripts/fontforge.py scripts/font2.py: scripts/common.py
 build/glyphs.sfd: build/glyphs.json scripts/fontforge.py
 	fontforge -script scripts/fontforge.py <build/glyphs.json
 
+#todo: generate the layers into one font file, and then add the base glyphs and other stuff afterwards
+# but how to ensure the correct glyph order...
+
 # set metrics/metadata and create extra lookups for couples emojis
 build/glyphs.otf: build/glyphs.sfd scripts/font2.py
 	fontforge -script scripts/font2.py
