@@ -39,7 +39,7 @@ for (let em of edata) {
 	if (em.couple)
 		glyphs.push({type:'couple', glyphName:em.glyphName, couple:em.couple})
 	else
-		glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, vs16:em.vs16})
+		glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, varsel:em.varsel})
 	if (!em.file)
 		continue
 	

@@ -10,18 +10,18 @@ let extras = []
 let couples = [] // couple prototypes
 
 // zero width joiner
-extras.push({codes: ["0x200D"]})
-// variation selector 16 (do we need this?)
-extras.push({codes: ["0xFE0F"]})
+extras.push({codes: ["0x200D"], varsel: 1})
+// variation selector 16 (do we need this in the font?)
+extras.push({codes: ["0xFE0F"], varsel: 1})
 // combining enclosing keycap
-extras.push({codes: ["0x20E3"], file: '1f7e6'})
+extras.push({codes: ["0x20E3"], file: '1f7e6', varsel: 1})
 // phone keypad characters (for keycap emojis)
 for (let chr of "0123456789#*") {
 	let code = chr.codePointAt().toString(16)
 	extras.push({
 		codes: ["0x"+code],
 		file: code+"-20e3",
-		vs16: 2,
+		varsel: 2,
 	})
 }
 // tag letters (for regional flags)
@@ -29,11 +29,13 @@ for (let i=0;i<36;i++) {
 	let letter = i.toString(36)
 	extras.push({
 		codes: ["0x"+(0xE0000+letter.codePointAt()).toString(16)],
+		varsel: 1,
 	})
 }
 // tag cancel (for regional flags)
 extras.push({
 	codes: ["0xE007F"],
+	varsel: 1,
 })
 // regional indicators (for country flags)
 for (let i=0;i<26;i++) {
@@ -43,10 +45,16 @@ for (let i=0;i<26;i++) {
 	extras.push({
 		codes,
 		file: code,
+		varsel: 1,
 	})
 }
 
-let vs16 = {__proto__:null}
+// varsel: bitfield
+// 1: may appear with no variation selector or skin tone modifier
+// 2: may appear with variation selector 16
+// 4: may appear with skin tone modifier
+// e.g. 6 means that the character always appears with either a skin tone modifier or a varation selector 16
+let varsel = {__proto__:null}
 
 let hardcoded_couples = {
 	"👭":"👩‍🤝‍👩",
@@ -96,25 +104,16 @@ for await (let line of lines('data/emoji-test.txt')) {
 	let [, codes, qual, str, version, name] = match
 	codes = codes.match(/\w+/g).map(x=>"0x"+x.replace(/^0+/,""))
 	
-	// filter out varsel16s, create list of which chars need them
-	let prev
-	let codes2 = codes.filter(c=>{
-		if (prev) {
-			if (+c == 0xFE0F) {
-				if (vs16[prev]===undefined)
-					vs16[prev] = 2
-				else
-					vs16[prev] = 1
-				return false
-			} else {
-				if (vs16[prev] >= 1) {
-					vs16[prev] = 1
-				} else
-					vs16[prev] = 0
-			}
-		}
-		prev = c
-		return true
+	// filter out varsel16s, and create a list of which chars need them
+	let codes2 = codes.filter((c,i,codes)=>{
+		let next = codes[i+1]
+		if (+next == 0xFE0F)
+			varsel[c] |= 2
+		else if (+next >= 0x1F3FB && +next <= 0x1F3FF)
+			varsel[c] |= 4
+		else
+			varsel[c] |= 1
+		return +c != 0xFE0F
 	})
 	
 	let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
@@ -175,7 +174,7 @@ for (let data of extras) {
 		codes: data.codes,
 		file: data.file || null,
 		glyphName: gname(data.codes),
-		vs16: data.vs16,
+		varsel: data.varsel,
 	})
 }
 
@@ -185,11 +184,11 @@ for (let data of emojis) {
 //	if (/[🇦-🇿]/u.test(String.fromCodePoint(...data.codes)))
 //		continue
 	
-	let v16 = data.codes.length==1 && vs16[data.codes[0]] || undefined
+	let vs = data.codes.length==1 && varsel[data.codes[0]] || undefined
 	
 	print_item({
 		codes: data.codes,
-		vs16: v16,
+		varsel: vs,
 		file: data.file,
 		glyphName: gname(data.codes)
 	})
@@ -205,3 +204,9 @@ for (let data of couples) {
 }
 
 process.stdout.write("\n]\n")
+
+// types of things:
+// 1: encoded character (ie in the cmap table) - may require varsel 16 (or skin tone modifier.. how do we handle that?)
+// 2: ligature (constructed from multiple glyphs via ligature subsitution)
+// 3: couple half (constructed from a contextual chaining lookup)
+// - and each of these may have a .file, indicating that it appears in the COLR table, and has layers to process

@@ -17,10 +17,13 @@ f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
 
 def create_unicode(cp, vs16):
+	#cp = cp if vs16 & (1|4) else -1 # unfortunately this doesn't work
 	glyph = f.createChar(cp, gname(cp))
 	glyph.width = 0 # need to set width otherwise it gets deleted when we save ..
-	if 'vs16' in g and g['vs16']:
-		glyph.altuni = ((cp, 0xFE0F, 0),)
+	if vs16 & 2:
+		glyph.altuni = [(cp, 0xFE0F, 0)]
+	#if vs16 & 4:
+	#	glyph.altuni = [(cp, x, 0) for x in range(0x1F3FB,0x1F3FF+1)]
 
 def create_ligature(codes):
 	glyph = f.createChar(-1, lname(codes))
@@ -41,7 +44,7 @@ for g in glyphList:
 		sys.stderr.write(f"codepoint {name}\n")
 		codes = [int(x, 16) for x in g['codes']]
 		if (len(codes)==1):
-			create_unicode(codes[0], g.get('vs16'))
+			create_unicode(codes[0], g.get('varsel'))
 		else:
 			create_ligature(codes)
 	elif typ=='layer':
