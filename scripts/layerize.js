@@ -36,10 +36,10 @@ bar.start()
 for (let em of edata) {
 	bar.step(w1++)
 	
-	if (em.couple)
-		glyphs.push({type:'couple', glyphName:em.glyphName, couple:em.couple})
-	else
-		glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, varsel:em.varsel})
+	//if (em.couple)
+	//	glyphs.push({type:'couple', glyphName:em.glyphName, couple:em.couple})
+	//else
+	//	glyphs.push({type:'codepoint', glyphName:em.glyphName, codes:em.codes, varsel:em.varsel})
 	if (!em.file)
 		continue
 	
@@ -109,11 +109,11 @@ for (let [str, [lname, shapes]] of layers) {
 		
 		Fs.writeFileSync("build/layers/"+lname2+".svg", svg)
 	}
-	glyphs.push({type:'layer', glyphName:lname, shapeCount:shapes.length})
+	edata.push({glyphName:lname, shapeCount:shapes.length})
 }
 bar.end()
 
-Fs.writeFileSync("build/glyphs.json", JSON.stringify(glyphs))
+Fs.writeFileSync("build/glyphs.json", JSON.stringify(edata))
 
 Fs.writeFileSync("build/layers.json", "[\n\t"+meta+"\n]")
 

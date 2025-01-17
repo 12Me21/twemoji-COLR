@@ -16,40 +16,26 @@ f.descent = VIEWBOX * SCALE
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
 
-def create_unicode(cp, vs16):
-	#cp = cp if vs16 & (1|4) else -1 # unfortunately this doesn't work
-	glyph = f.createChar(cp, gname(cp))
-	glyph.width = 0 # need to set width otherwise it gets deleted when we save ..
-	if vs16 & 2:
-		glyph.altuni = [(cp, 0xFE0F, 0)]
-	#if vs16 & 4:
-	#	glyph.altuni = [(cp, x, 0) for x in range(0x1F3FB,0x1F3FF+1)]
-
-def create_ligature(codes):
-	glyph = f.createChar(-1, lname(codes))
-	glyph.width = 0
-	glyph.addPosSub('depth', [gname(c) for c in codes])
-
-def create_layer(name, shapecount):
-	glyph = f.createChar(-1, name)
-	glyph.width = 0
-	# load each shape in the layer, being sure to *individually* correct their directions, otherwise removeOverlap() will break
-	for i in range(0, shapecount):
-		glyph.importOutlines(f"build/layers/{name}_{i}.svg", simplify=False, correctdir=True, scale=True)
-
 for g in glyphList:
 	name = str(g['glyphName'])
-	typ = g['type']
-	if typ=='codepoint':
-		sys.stderr.write(f"codepoint {name}\n")
-		codes = [int(x, 16) for x in g['codes']]
-		if (len(codes)==1):
-			create_unicode(codes[0], g.get('varsel'))
-		else:
-			create_ligature(codes)
-	elif typ=='layer':
-		sys.stderr.write(f"layer {name}\n")
-		create_layer(name, g['shapeCount'])
+	sys.stderr.write(f"glyph {name}\n")
+	glyph = f.createChar(-1, name)
+	glyph.width = 0
+	if 'encoding' in g:
+		cp = int(g['encoding'][0])
+		vs = g['encoding'][1]
+		#cp = cp if vs & (1|4) else -1 # unfortunately this doesn't work
+		glyph.unicode = cp
+		if vs & 2:
+			glyph.altuni = [(cp, 0xFE0F, 0)]
+		#if vs & 4:
+		#	glyph.altuni = [(cp, x, 0) for x in range(0x1F3FB,0x1F3FF+1)]
+	if 'ligature' in g:
+		glyph.addPosSub('depth', g['ligature'])
+	if 'shapeCount' in g:
+		# load each shape in the layer, being sure to *individually* correct their directions, otherwise removeOverlap() will break
+		for i in range(0, g['shapeCount']):
+			glyph.importOutlines(f"build/layers/{name}_{i}.svg", simplify=False, correctdir=True, scale=True)
 
 # now simplify all the glyphs at once
 f.selection.all()

@@ -1434,7 +1434,9 @@ let root = parse_xml(xml, tag=>{
 		tag.attrs.cx = p.x.fmt()
 		tag.attrs.cy = p.y.fmt()
 	}*/
-	
+	if (tag.name=='circle') {
+		tag.attrs.cx = 36-tag.attrs.cx
+	}
 	if (tag.name=='path') {
 		let d = tag.attrs.d
 		let cc = parse(d, !fc)
@@ -1493,6 +1495,9 @@ let root = parse_xml(xml, tag=>{
 				}
 				if (OPT.split)
 					first = true
+				
+				c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+				
 				if (!c.some(x=>x instanceof SegGap)) {
 					let orient = contour_orientation(c)
 					print('PATH!','len '+c.length+', 🔃 '+orient)
