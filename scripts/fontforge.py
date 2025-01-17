@@ -38,6 +38,7 @@ for g in glyphList:
 			glyph.importOutlines(f"build/layers/{name}_{i}.svg", simplify=False, correctdir=True, scale=True)
 
 # now simplify all the glyphs at once
+print("Simplifying outlines...")
 f.selection.all()
 # merge all the shapes together
 f.removeOverlap() # (this one is the slowest)

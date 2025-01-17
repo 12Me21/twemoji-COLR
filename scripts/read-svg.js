@@ -12,6 +12,66 @@ const named = {
 	lavender: '#E6E6FA',
 }
 
+const fix_colors = {
+	"#9D0522":"#A0041E",
+	"#BB1A34":"#BE1931",
+	"#BE2032":"#BE1931",
+	"#BD2032":"#BE1931",
+	"#DD2F45":"#DD2E44",
+	"#DA2F47":"#DD2E44",
+	"#E75A70":"#EA596E",
+	"#F2ABBA":"#F4ABBA",
+	"#F19020":"#F4900C",
+	"#F18F26":"#F4900C",
+	"#FCAB40":"#FFAC33",
+	"#FAAA35":"#FFAC33",
+	"#FDCB58":"#FFCC4D",
+	"#FFCB4C":"#FFCC4D",
+	"#FFD882":"#FFD983",
+	"#FDD888":"#FFD983",
+	"#FEE7B8":"#FFE8B6",
+	"#3F7123":"#3E721D",
+	"#3E701E":"#3E721D",
+	"#5D9040":"#5C913B",
+	"#5C903F":"#5C913B",
+	"#5C913A":"#5C913B",
+	"#78B159":"#77B255",
+	"#77B155":"#77B255",
+	"#A7D28B":"#A6D388",
+	"#A6D488":"#A6D388",
+	"#C6E4B5":"#C6E5B3",
+	"#226798":"#226699",
+	"#2A6797":"#226699",
+	"#3A87C2":"#3B88C3",
+	"#4289C1":"#3B88C3",
+	"#5DADEC":"#55ACEE",
+	"#8CCAF7":"#88C9F9",
+	"#BDDDF4":"#BBDDF5",
+	"#553986":"#553788",
+	"#7450A0":"#744EAA",
+	"#7450A8":"#744EAA",
+	"#9268CA":"#9266CC",
+	"#AA8ED6":"#AA8DD8",
+	"#CBB8E9":"#CBB7EA",
+	"#642116":"#662113",
+	"#8A4633":"#8A4B38",
+	"#BF6952":"#C1694F",
+	"#BF6952":"#C1694F",
+	"#D79E84":"#D99E82",
+	"#DA9F83":"#D99E82",
+	"#DA9E82":"#D99E82",
+	"#292E32":"#292F33",
+	"#66757F":"#67757F",
+	"#99AAB5":"#9AAAB4",
+	"#AEBBC1":"#AAB8C2",
+	"#CDD6DD":"#CCD6DD",
+	"#CCD6DC":"#CCD6DD",
+	"#CDD7DF":"#CCD6DD",
+	"#E0E7EC":"#E1E8ED",
+	"#929497":"#939598",
+	"#F1F1F1":"#F1F2F2",
+}
+
 class Shape {
 	transform = null
 	constructor(attrs) {
@@ -108,6 +168,7 @@ export function process_svg(filename) {
 		}
 		if ('fill' in attrs) {
 			fill = expandColor(attrs.fill, opacity)
+			fill = fill.replace(/^#....../, x=>fix_colors[x]||x)
 		} else {
 			if (opacity != 1.0)
 				fill = expandColor(fillColor.replace(/ff$/i, ""), opacity)
