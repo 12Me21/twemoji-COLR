@@ -1,5 +1,6 @@
 <!doctype html>
 <meta charset=utf-8>
+<title>twemoji demo</title>
 <style>
 	@font-face {
 		font-family: 'Twemoji';
@@ -111,14 +112,40 @@ E50A                                                   ; fully-qualified     # �
 	<div class='text' id=$text>🎇</div>
 	<img id=$image style='width:1.125em;height:1.125em' src="./twemoji/assets/svg/1f387.svg" width=36 height=36>
 </div>
+<style>
+	.list {
+		display: flex;
+		flex-wrap: wrap;
+	}
+	.list > * {
+		padding: 5px;
+		width: 1.125em;
+		height: 1.125em;
+	}
+	.s0 .s0 { display: none; }
+	.s1 .s1 { display: none; }
+	.s2 .s2 { display: none; }
+	.s3 .s3 { display: none; }
+	.s4 .s4 { display: none; }
+	.s5 .s5 { display: none; }
+	.g0 .g0 { display: none; }
+	.g1 .g1 { display: none; }
+	.g2 .g2 { display: none; }
+</style>
 <script src='./data/edata.js'></script>
-<div style='font-family:twemoji;word-spacing: 7.5px;line-height: 54px;font-size:32px;margin:16px;'>
+<input type=range min=0 max=2 oninput='$list.className=`list s${$s.value} g${$g.value}`' id=$g>
+<input type=range min=0 max=5 oninput='$list.className=`list s${$s.value} g${$g.value}`' id=$s>
+<div id=$list class='list' style='font-family:twemoji;font-size:32px;margin:16px;'>
 	<h1>🇺🇳</h1>
 <script>
 	let s = ""
 	for (let x of EDATA) {
 		s += "<div class=item>"
 		for (let n of x) {
+			if (n.family)
+				continue
+			if (n.exts)
+				continue
 			let cls = []
 			if (n.ext) {
 				if (n.ext.gender != undefined) {
