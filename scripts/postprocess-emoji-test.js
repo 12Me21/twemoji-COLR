@@ -176,7 +176,7 @@ for (let data of edata2) {
 	let d = decode_emoji(data.emoji)
 	if (!d)
 		console.error(data.emoji, "no?")
-	//d.data = data
+	d.data = data
 	d.emoji = data.emoji
 	let list = (bybase[d.base] ??= [])
 	list.push(d)
@@ -209,7 +209,8 @@ for (let base in bybase) {
 }
 
 for (let d of all) {
-//	if (d.ext && Object.keys(d.ext).length)
-//		d.data.variant = [d.base, d.ext]
+	if (d.ext && Object.keys(d.ext).length)
+		d.data.variant = [d.base, d.ext]
 }
-console.log("window.EDATA = [\n\t"+Object.entries(bybase).map(([k,v])=>JSON.stringify(v)).join(",\n\t")+"\n]")
+//console.log("window.EDATA = [\n\t"+Object.entries(bybase).map(([k,v])=>JSON.stringify(v)).join(",\n\t")+"\n]")
+console.log("window.EDATA = [\n\t"+Object.entries(edata).map(([k,v])=>JSON.stringify(v)).join(",\n\t")+"\n]")
