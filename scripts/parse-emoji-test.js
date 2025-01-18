@@ -48,6 +48,7 @@ for (let i=0;i<26;i++) {
 	extras.push({
 		encoding: [code, 1],
 		file: code.toString(16),
+		emoji: String.fromCodePoint(code),
 	})
 }
 
@@ -179,6 +180,8 @@ for await (let line of lines('data/emoji-test.txt')) {
 		glyphName: gname(codes2),
 		file,
 	}
+	data.name = name
+	data.emoji = str
 	if (decouples[str]) {
 		data.decouple = decouples[str].map(x=>gname([...x].map(x=>x.codePointAt())))
 	}
