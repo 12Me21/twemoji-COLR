@@ -1,49 +1,39 @@
 <h1>Using</h1>
 
-“Ok, so how do i actually get an application/website to use this font”
+<blockquote>“Ok, so how do i actually get an application/website to use this font”</blockquote>
 
-unfortunately there isn't a simple answer to that.
-Most things will either use whatever the default emoji font is, or they'll have a list of fonts that they check for.
+<p>unfortunately, there isn't a simple answer to that.<br>
+most things will either use whatever the default emoji font is, or they'll have a list of fonts that they check for.
 
-font names:
-note: i will talk about the "name" of a font. this is determined by metadata in the font, not by the filename. (i.e. renaming the file won't do anything, you have to use a tool to change the strings in the <code>name</code> table)
+<p>basically, the process is different for each application and website and operating system.
 
-<h2>Firefox Default Font</h2>
-Affects: the firefox ui, and websites which don't specify an emoji font
-<p>In <a href=about:config>about:config</a>, change <code>font.name-list.emoji</code> to “Twemoji COLR”.
+<p>note: i will talk about the "name" of a font. this is determined by metadata in the font, not by the filename. (i.e. renaming the file won't do anything, you have to use a tool to change the strings in the <code>name</code> table)
 
-<h2>Windows 10/11 Default Font</h2>
-Affects: applications which use the default font, and websites which have "Segoe UI Emoji" in their emoji font list
-<p>The default emoji font is named "Segoe UI Emoji". You may be able to override it by installing twemoji as this name, but it could cause problems.(applications may expect the emoji font to have certain features)
+<h2>Firefox</h2>
+<p>in <a href=about:config>about:config</a>, change <code>font.name-list.emoji</code> to <q>Twemoji COLR</q>.  This will set the emoji font used in the UI and on any website which doesn't specify an emoji font.
 
-<h2>MacOS Default Font</h2>
-<p>Similar to windows, but with "Apple Color Emoji"
-	
 <h2>Websites</h2>
-<p>
-	
-<p>many websites will specify a list of emoji fonts, and will use the first one you have installed.
-	this list almost always begins with "Apple Color Emoji", "Segoe UI Emoji". so, installing twemoji with the name "Apple Color Emoji" is a fairly reliable option (unless you are on MacOS) This works on websites such as Bluesky, 
+<p>many websites will specify a list of emoji fonts beginning with <code>"Apple Color Emoji", "Segoe UI Emoji", ...</code> (the first one you have installed will be used).
+<p>so, installing twemoji with the name "Apple Color Emoji" is actually a fairly reliable option (unless you are on MacOS, of course). This works on many websites such as Bluesky, Github, etc.
 
+<h2>Windows/MacOS</h2>
+<p>you may be able to override the builtin emoji font by installing twemoji as the same name ("Segoe UI Emoji" on windows, and "Apple Color Emoji" on mac) however, this can cause problems because applications may expect the emoji font to have certain features (e.g. black and white glyphs for programs which can't display color glyphs)
 
-For example, most websites will use a list of emoji fonts like:
-"Apple Color Emoji"
-"Segoe UI Emoji" (microsoft's emoji font)
-"Noto Color Emoji" (google's emoji font)
-
-
-
-<p></p>
-
-<h1>Alternatives</h1>
-
+<h1>Other Projects</h1>
 
 <table>
-	<tr><th>link<th>format</tr>
-	<tr><td>"Twitter Color Emoji"<td>https://github.com/13rac1/twemoji-color-font<td>OpenType SVG (obsolete color vector format)</tr>
-	<tr><td>"Twitter Color Emoji"<td>https://github.com/13rac1/twemoji-color-font<td>OpenType SVG (obsolete color vector format)</tr>
-	
+	<tr><th>Project<th>Format<th>Emoji Version</tr>
+	<tr><td><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType|SVG (obsolescent color vector format)<td>15.1 (2024)</tr>
+	<tr><td><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf<td>OpenType|CBDT (color bitmap format)<td>15.1 (2024)</tr>
+	<tr><td><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr<td>OpenType|COLR v0 (color vector format)<td bgcolor=pink>14.0 (2022)</tr>
+	<tr><td><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR<td>OpenType|COLR v0 (color vector format)<td>15.1 (2024)</tr>
 </table>
-- (SVG in opentype)
-- (opentype CBDT color bitmap)
-- ()
+
+<p>My font was designed to replace mozilla's "Twemoji Mozilla", which hasn't been updated in a while and has some broken dependencies.
+	
+<p>I've also increased the size of the emojis relative to other text, to match other emoji fonts (including twitter itself)
+	
+	<figure>
+Before: <div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><br>
+After: <div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div><div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div><div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div>
+</figure>
