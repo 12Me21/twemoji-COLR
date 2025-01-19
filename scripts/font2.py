@@ -135,7 +135,7 @@ for cname in couples:
 # right lookup contains 1 zwj: 1012012
 #1000196
 
-f.addLookup('couples_kern', 'gpos_pair', None, [("ccmp",[("DFLT",["dflt"])])])
+f.addLookup('couples_kern', 'gpos_pair', None, [("dist",[("DFLT",["dflt"])])])
 f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
