@@ -125,6 +125,8 @@ function expandColor(c, opacity) {
 		return null
 	if (c=='none')
 		return "#00000000"
+	if (c=='currentColor')
+		return c
 	check: {
 		if (c.startsWith("#")) {
 			switch (c.length) {

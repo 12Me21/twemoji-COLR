@@ -99,4 +99,12 @@ The following is rendered using text:
 		$image.src = `./twemoji/assets/svg/${thing.file}.svg`
 	}
 	//load('👺')
+	$list.onclick = function(ev) {
+		if (ev.target.tagName=="SPAN") {
+			load(ev.target.textContent)
+		}
+	}
 </script>
+<div style='font-family:sans-serif, twemoji'>
+	abcdefg 0⃣1234 ♥ hello ♥️☺ ☹ 	
+</div>

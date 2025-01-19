@@ -9,6 +9,10 @@ let emojis = []
 let extras = []
 let couples = [] // couple prototypes
 
+function svg_filename(codes) {
+	return codes.map(x=>(+x).toString(16)).join("-")
+}
+
 // zero width joiner
 extras.push({
 	encoding: [0x200D, 1],
@@ -20,14 +24,14 @@ extras.push({
 // combining enclosing keycap
 extras.push({
 	encoding: [0x20E3, 1],
-	file: '1f7e6', // fallback
+	file: svg_filename([0x20E3]), // fallback
 })
-// phone keypad characters (for keycap emojis)
+// these ascii characters (for keycap emojis)
 for (let chr of "0123456789#*") {
 	let code = chr.codePointAt()
 	extras.push({
 		encoding: [code, 2],
-		file: `${code.toString(16)}-20e3`, // fallback
+		file: svg_filename([code]), // fallback
 	})
 }
 // tag letters (for regional flags)
@@ -47,7 +51,7 @@ for (let i=0;i<26;i++) {
 	let code = 0x1F1E6+i
 	extras.push({
 		encoding: [code, 1],
-		file: code.toString(16),
+		file: svg_filename([code]),
 		emoji: String.fromCodePoint(code),
 	})
 }
@@ -154,7 +158,7 @@ for await (let line of lines('data/emoji-test.txt')) {
 	
 	let novs = codes2.length==1 || name=="eye in speech bubble" || codes[codes.length-1] == 0x20E3
 	
-	let file = (novs ? codes2 : codes).map(x=>(+x).toString(16)).join("-")
+	let file = svg_filename(novs ? codes2 : codes)
 	
 	let couple = decode_couple(str)
 	if (couple) {
@@ -231,8 +235,8 @@ process.stdout.write("\n]\n")
 
 // or i guess like,  what are the attributes of a glyph
 // - all [glyph name] .glyphName
-// - all? [some readable name like 'smiling face with hearts'] .ident
-// - is in cmap table [codepoint, variation selector flags] .code, .varsel
+// - all? [some readable name like 'smiling face with hearts'] .name
+// - is in cmap table [codepoint, variation selector flags] .code
 // - is in basic ligature lookup [list of codepoints — or glyph names] - ah if we use glyph names, then we can do multiple steps of substituion (e.g. person+skin3 -> person_skin3, person_skin3+zwj+school -> teacher_skin3) but idk if this is actually smaller... didn't we already write code to try? what ever happened to that? .ligature
 // - is in hardcoded couple deconstruction lookup [list of glyphs to deconstruct into] .decouple
 // - is in couple halfs substitution, and couple halfs kerning [source person type, couple type, which half] - do we store these attributes like enums or as lists of glyph names (the former is simpler, the latter is more extensible) .couple = [coupletype, persontype, half]

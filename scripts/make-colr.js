@@ -25,7 +25,9 @@ for (let g of layers) {
 	
 	for (let l of g.layers) {
 		let color = l[1], cid
-		if (colors.has(color))
+		if (color=='currentColor') {
+			cid = 0xFFFF
+		} else if (colors.has(color))
 			cid = colors.get(color)
 		else {
 			cid = colors.size
