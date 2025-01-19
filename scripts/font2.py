@@ -135,8 +135,8 @@ for cname in couples:
 # right lookup contains 1 zwj: 1012012
 #1000196
 
-f.addLookup('couples_kern', 'gpos_pair', None, [("dist",[("DFLT",["dflt"])])])
-f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
+#f.addLookup('couples_kern', 'gpos_pair', None, [("dist",[("DFLT",["dflt"])])])
+#f.addKerningClass('couples_kern', 'couples_kern1', [left_all], [[],right_all], [0,-WIDTH])
 
 # now set the real metrics. (be careful so fontforge doesn't re-scale the entire font)
 descent = round(0.2 * EM) # set the ratio of ascent:descent to 5:1 (doesnt really matter for display itself, but we do this to match other fonts)
@@ -148,6 +148,8 @@ for gname in f:
 	glyph = f[gname]
 	cp = glyph.unicode
 	if cp==0x200D or cp==0x20E3 or cp==0xFE0F or cp>=0xE0000:
+		glyph.width = 0
+	elif glyph.glyphname in left_all:
 		glyph.width = 0
 	else:
 		glyph.width = WIDTH
