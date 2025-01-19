@@ -1,8 +1,8 @@
 MAKEFLAGS += --no-builtin-rules
 temp != mkdir -p build/layers
 
-twemoji_repo = https://github.com/jdecked/twemoji.git
-twemoji_commit = c82a400de008d671167a73d82cddd37de3d583e1
+twemoji_repo = https://github.com/12Me21/twemoji-fix-ellipses.git
+twemoji_branch = all
 
 .SUFFIXES:
 
@@ -14,7 +14,7 @@ main: build/Twemoji.otf
 # (sparse checkout so it doesn't take 50 years to download)
 twemoji/assets/svg:
 	rm -rf twemoji
-	git clone --filter=blob:none --depth=1 --no-checkout -- $(twemoji_repo) twemoji
+	git clone --filter=blob:none --depth=1 --no-checkout -b $(twemoji_branch) -- $(twemoji_repo) twemoji
 	cd twemoji && git sparse-checkout init && git sparse-checkout set assets/svg && git checkout $(twemoji_commit)
 
 data/unicode-emoji-test.txt:
