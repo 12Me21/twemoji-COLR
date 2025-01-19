@@ -49,10 +49,17 @@
 	.g2 .g2 { display: none; }
 </style>
 <script src='./data/edata.js'></script>
-<input type=range min=0 max=2 oninput='$list.className=`list s${$s.value} g${$g.value}`' id=$g>
-<input type=range min=0 max=5 oninput='$list.className=`list s${$s.value} g${$g.value}`' id=$s>
+<form id=$controls>
+	<input name=g type=range min=0 max=2 value=0>
+	<input name=s type=range min=0 max=5 value=3>
+</form>
+The following is rendered using text:
 <div id=$list class='list' style='font-family:twemoji;font-size:32px;margin:16px;'></div>
 <script>
+	$controls.oninput = function() {
+		$list.className = `list s${$controls.s.value} g${$controls.g.value}`
+	}
+	$controls.oninput()
 	let bases = {__proto__:null}
 	let s = ""
 	for (let x of EDATA) {
@@ -91,37 +98,5 @@
 		$text.textContent = thing.emoji
 		$image.src = `./twemoji/assets/svg/${thing.file}.svg`
 	}
-	load('👺')
+	//load('👺')
 </script>
-
-lists:
-
-ok so what we want to do is
-parse the emoji test file, and
-the types we can encounter are:
-simple emojis (not part of any variation set)
-person emojis (have gender/skin variants (up to 18))
- - group these together
-couple emojis (have some required combinations, but could support up to 18^2)
- - remove these from the main list
- - must keep the legacy single-character forms (and their skin tone modified versions) as glyphs though, for decomposition and for environments which don't support ligatures (only need visuals for the unmodified ones though)
-family emojis (could allow something like 18^4 + 18^3 + 18^3 + 18^2 or more variants, but is being deprecated, so we only have like 5 simple variants, effectively)
-- the future of these is unclear (e.g. many fonts have not made the commitment to merge these yet)
-- i suspect a compromise will be reached, where the icon forms will have some kind of gender indicators in them to avoid loss of information
-- 4 scenarios:
--- 1: turn all family emojis into abstract symbols, with just 4 distinct glyphs: (🧑‍🧑‍🧒, 🧑‍🧑‍🧒‍🧒, 🧑‍🧒, 🧑‍🧒‍🧒) (all the old gendered ones are displayed as these)
---- jdecked twemoji does this, and it's what unicode emoji 15.1 officially recommends iirc
--- 2: bring back the old designs from before 15.1, but build them from components like we do with couples, to support full combinations of gender and skin tones
---- windows 11 emoji does this
--- 3: use the new abstract symbols, but add gender indicators (like, silouette of hair) to avoid loss of information
---- google noto color emoji does this
--- 4: don't support any family emoji ligatures (so they just render as separate person emojis), only including a glyph for the single-character 👪 symbol
-i think #3 is the best, because it avoids stripping information from emojis that are currently in use, while still using the new abstract designs which are easier to read and don't need to support skin color variants which would be impractical
-EXCEPT
-that it has the same problem as the couples emojis: you can't mix gendered and ungendered people (e.g. you can combine man+woman+boy, and adult+adult+child, but not man+woman+child. they have to be all gendered or all ungendered)
-(though of course, you can solve this in the same way as with couples emojis)
-i dont really want to be editing glyphs though.. but colors would be nice.
-
-country flag emojis (using regional indicators)
-subdivision flag emojis (using tag letters. supports extensions)
-regional indicators (pseudo-emojis, rendered as such)
