@@ -1,3 +1,30 @@
+<!doctype html><meta charset=utf-8>
+<title>Twemoji COLR readme</title>
+<style>
+	code {
+		border: 1px solid gray;
+		padding: 0 1px;
+		border-radius: 1px;
+	}
+	body {
+		font-family: Georgia, serif;
+	}
+</style>
+
+<h1>About Fonts</h1>
+<p>These days, emojis are usually rendered from an <i>OpenType</i> font file (usually with the extension <code>.ttf</code> or <code>.otf</code>)
+	
+<h2>Color Glyph Formats</h2>
+<p>OpenType has several ways of storing colored glyphs:
+<table>
+	<tr><th>table name<th>type<th>support</tr>
+	<tr><td><code>CBDT</code><td>bitmap<td>limited</tr>
+	<tr><td><code>sbix</code><td>bitmap<td>Apple only</tr>
+	<tr><td><code>SVG&nbsp;</code><td>vector, with gradients<td>obsolescent</tr>
+	<tr><td><code>COLR</code> v0<td>vector, solid colors only<td>widespread</tr>
+	<tr><td><code>COLR</code> v1<td>vector, with gradients<td>pretty good</tr>
+</table>		
+
 <h1>Using</h1>
 
 <blockquote>“Ok, so how do i actually get an application/website to use this font”</blockquote>
@@ -7,17 +34,18 @@ most things will either use whatever the default emoji font is, or they'll have 
 
 <p>basically, the process is different for each application and website and operating system.
 
-<p>note: i will talk about the "name" of a font. this is determined by metadata in the font, not by the filename. (i.e. renaming the file won't do anything, you have to use a tool to change the strings in the <code>name</code> table)
-
-<h2>Firefox</h2>
-<p>in <a href=about:config>about:config</a>, change <code>font.name-list.emoji</code> to <q>Twemoji COLR</q>.  This will set the emoji font used in the UI and on any website which doesn't specify an emoji font.
+<p>note: i will talk about the "name" of a font.&nbsp; this is determined by metadata in the font, not by the filename.&nbsp; (i.e. renaming the file won't do anything, you have to use a tool to change the strings in the <code>name</code> table)
 
 <h2>Websites</h2>
-<p>many websites will specify a list of emoji fonts beginning with <code>"Apple Color Emoji", "Segoe UI Emoji", ...</code> (the first one you have installed will be used).
-<p>so, installing twemoji with the name "Apple Color Emoji" is actually a fairly reliable option (unless you are on MacOS, of course). This works on many websites such as Bluesky, Github, etc.
+<p>many websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.<br>
+i.e:&nbsp; i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code> (unless you are on <i>MacOS</i>).&nbsp; This works on many websites, such as <i>Bluesky</i>, <i>Github</i>, etc.
 
-<h2>Windows/MacOS</h2>
-<p>you may be able to override the builtin emoji font by installing twemoji as the same name ("Segoe UI Emoji" on windows, and "Apple Color Emoji" on mac) however, this can cause problems because applications may expect the emoji font to have certain features (e.g. black and white glyphs for programs which can't display color glyphs)
+<h2><i>Firefox</i></h2>
+<p>in <a href=about:config>about:config</a>, set <code>font.name-list.emoji</code> to <code>Twemoji COLR</code>.&nbsp; This will set the emoji font used in the UI and on any website which doesn't specify an emoji font.
+
+<h2><i>Windows</i>/<i>MacOS</i></h2>
+<p>you may be able to install a copy of <i>Twemoji COLR</i> with the same name as the system emoji font (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>MacOS</i>), to override it in applications which use the system font.<br>
+however, this can cause problems. (for example, if an application tries to render emojis without color: <i>Segoe UI Emoji</i> contains black-and-white versions of the emojis, while <i>Twemoji COLR</i> doesn't).
 
 <h1>Other Projects</h1>
 
