@@ -12,29 +12,21 @@
 </style>
 
 <h1>About Fonts</h1>
-<p>These days, emojis are usually rendered from an <i>OpenType</i> font file (usually with the extension <code>.ttf</code> or <code>.otf</code>)
-	
-<h2>Color Glyph Formats</h2>
-<p>OpenType has several ways of storing colored glyphs:
-<table>
-	<tr><th>table name<th>type<th>support</tr>
-	<tr><td><code>CBDT</code><td>bitmap<td>limited</tr>
-	<tr><td><code>sbix</code><td>bitmap<td>Apple only</tr>
-	<tr><td><code>SVG&nbsp;</code><td>vector, with gradients<td>obsolescent</tr>
-	<tr><td><code>COLR</code> v0<td>vector, solid colors only<td>widespread</tr>
-	<tr><td><code>COLR</code> v1<td>vector, with gradients<td>pretty good</tr>
-</table>		
+<aside><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).</aside>
 
+<p>these days, emojis are usually rendered from a font file. Nearly all fonts now use the <i>OpenType</i> (typical file extensions: <code>.ttf</code>/<code>.otf</code>/<code>.woff</code>/<code>.woff2</code>) format, but it has several different ways of storing color glyphs.&nbsp; <i>COLRv0</i> is the most widely supported of these, in most places.
+	
+<h2>Font Names</h2>
+<p>The name of a font is stored within the file, separate from the filename.&nbsp; i.e: renaming the file won't do anything; you'll need to use a tool to change the strings in the <code>name</code> table.
+	
 <h1>Using</h1>
 
-<blockquote>“Ok, so how do i actually get an application/website to use this font”</blockquote>
+<blockquote>“Ok, but how do i actually make an application/website use this font?”</blockquote>
 
 <p>unfortunately, there isn't a simple answer to that.<br>
-most things will either use whatever the default emoji font is, or they'll have a list of fonts that they check for.
+most things will either the system emoji font, or they'll have a list of fonts that they check for.
 
 <p>basically, the process is different for each application and website and operating system.
-
-<p>note: i will talk about the "name" of a font.&nbsp; this is determined by metadata in the font, not by the filename.&nbsp; (i.e. renaming the file won't do anything, you have to use a tool to change the strings in the <code>name</code> table)
 
 <h2>Websites</h2>
 <p>many websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.<br>
