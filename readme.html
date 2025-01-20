@@ -13,47 +13,69 @@
 
 <h1>About Fonts</h1>
 <aside><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).</aside>
+<h2>Color Fonts</h2>
+<p>these days, emojis are usually rendered from a font file.&nbsp; nearly all fonts now use the <i>OpenType</i> (typical file extensions: <code>.ttf</code>/<code>.otf</code>/<code>.woff</code>/<code>.woff2</code>) format, but it has several different ways of storing color glyphs.
 
-<p>these days, emojis are usually rendered from a font file. Nearly all fonts now use the <i>OpenType</i> (typical file extensions: <code>.ttf</code>/<code>.otf</code>/<code>.woff</code>/<code>.woff2</code>) format, but it has several different ways of storing color glyphs.&nbsp; <i>COLRv0</i> is the most widely supported of these, in most places.
-	
+<table>
+	<tr><th>name<th>image type</tr>
+	<tr><td><code>CBDT</code><td>bitmap</tr>
+	<tr><td><code>sbix</code><td>bitmap</tr>
+	<tr><td><code>SVG&nbsp;</code><td>vector</tr>
+	<tr><td><code>COLR</code> (version 0)<td>vector (no gradients)</tr>
+	<tr><td><code>COLR</code> (version 1)<td>vector</tr>
+</table>
+<aside>Todo: collect data about which operating systems and applications support which format</aside>
+<p><i>COLRv0</i> is generally the most widely supported of these, except for some older <i>Linux</i> applications which only support <i>CBDT</i>.
+
 <h2>Font Names</h2>
-<p>The name of a font is stored within the file, separate from the filename.&nbsp; i.e: renaming the file won't do anything; you'll need to use a tool to change the strings in the <code>name</code> table.
+<p>the name of a font is stored within the file, separate from the filename.&nbsp; i.e: renaming the file won't do anything; you'll need to use a tool to change the strings in the <code>name</code> table.
+<p>you can install multiple copies of a font under different names.
 	
-<h1>Using</h1>
+<h1>Using a Custom Emoji Font</h1>
 
-<blockquote>“Ok, but how do i actually make an application/website use this font?”</blockquote>
+<blockquote>“ok but how do i actually make an application/website use this font?”</blockquote>
 
-<p>unfortunately, there isn't a simple answer to that.<br>
-most things will either the system emoji font, or they'll have a list of fonts that they check for.
+<p>unfortunately, there isn't a simple answer to that.&nbsp; <!--&nbsp; it depends on the application:
+<dl>
+	<dt>application has a setting to choose the emoji font
+	<dd>yay
+	<dt>application has a list of fonts that it tries to load
+	<dd>install your font as the first name in the list (often this is <code>Apple Color Emoji</code>)
+	<dt>application uses the system emoji font
+	<dd>override the system emoji font (by installing another font with the same name)
+	<dt>application includes its own hardcoded emoji font
+	<dd>(you're outta luck)
+</dl>-->
+most things will either use the system emoji font, or they'll have a list of fonts that they check for.&nbsp; some may have a setting to choose the emoji font, and some will use their own hardcoded emojis.
 
-<p>basically, the process is different for each application and website and operating system.
-
-<h2>Websites</h2>
-<p>many websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.<br>
-i.e:&nbsp; i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code> (unless you are on <i>MacOS</i>).&nbsp; This works on many websites, such as <i>Bluesky</i>, <i>Github</i>, etc.
+<p>basically, the process is different for each application and website and operating system, if it's possible at all.
 
 <h2><i>Firefox</i></h2>
-<p>in <a href=about:config>about:config</a>, set <code>font.name-list.emoji</code> to <code>Twemoji COLR</code>.&nbsp; This will set the emoji font used in the UI and on any website which doesn't specify an emoji font.
+<p>in <a href=about:config>about:config</a>, set <code>font.name-list.emoji</code> to <code>Twemoji COLR</code>.&nbsp; this affects <i>Firefox</i>'s UI and any website which doesn't specify its own emoji font.
+
+<h2>Some Websites</h2>
+<p>some websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.
+<p>i.e:&nbsp; unless you are on <i>MacOS</i>, i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code>.&nbsp; this affects websites such as <i>Bluesky</i>, <i>Github</i>, etc (in any browser)
 
 <h2><i>Windows</i>/<i>MacOS</i></h2>
-<p>you may be able to install a copy of <i>Twemoji COLR</i> with the same name as the system emoji font (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>MacOS</i>), to override it in applications which use the system font.<br>
-however, this can cause problems. (for example, if an application tries to render emojis without color: <i>Segoe UI Emoji</i> contains black-and-white versions of the emojis, while <i>Twemoji COLR</i> doesn't).
+<p>you may be able to replace the system emoji font by installing a copy of <i>Twemoji COLR</i> with the same name as it (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>MacOS</i>).&nbsp; this affects anything that uses the system font.
+<p>however, this <em>might</em> cause problems.&nbsp; (for example, if an application tries to render emojis without color: <i>Segoe UI Emoji</i> contains black-and-white versions of the emojis, while <i>Twemoji COLR</i> doesn't).
 
-<h1>Other Projects</h1>
+<h1>Related Works</h1>
 
 <table>
 	<tr><th>Project<th>Format<th>Emoji Version</tr>
-	<tr><td><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType|SVG (obsolescent color vector format)<td>15.1 (2024)</tr>
-	<tr><td><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf<td>OpenType|CBDT (color bitmap format)<td>15.1 (2024)</tr>
-	<tr><td><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr<td>OpenType|COLR v0 (color vector format)<td bgcolor=pink>14.0 (2022)</tr>
-	<tr><td><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR<td>OpenType|COLR v0 (color vector format)<td>15.1 (2024)</tr>
+	<tr><td><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td bgcolor=pink>OpenType+SVG<td>15.1 (2024)</tr>
+	<tr><td><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf<td>OpenType+CBDT<td>15.1 (2024)</tr>
+	<tr><td><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr<td>OpenType+COLRv0<td bgcolor=pink>14.0 (2022)</tr>
+	<tr><td><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR<td>OpenType+COLRv0<td>15.1 (2024)</tr>
 </table>
 
-<p>My font was designed to replace mozilla's "Twemoji Mozilla", which hasn't been updated in a while and has some broken dependencies.
+<p>my font was designed to replace <i>Twemoji Mozilla</i>, which hasn't been updated in a while and has some broken dependencies.
 	
-<p>I've also increased the size of the emojis relative to other text, to match other emoji fonts (including twitter itself)
+<p>i've also adjusted the size and position of the emojis relative to other text, to match other emoji fonts (including twitter itself).
 	
-	<figure>
-Before: <div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><div style="display:inline-block;width:15px;height:15px;background-color:red;vertical-align:-2px;border-radius:999px"></div><br>
-After: <div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div><div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div><div style="display:inline-block;width:18px;height:18px;background-color:red;vertical-align:-3px;margin:0 1px;border-radius:999px"></div>
+<figure style="font-family:sans-serif">
+	Before: <img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><br>
+After: <img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;"><img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;"><img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;">
 </figure>
