@@ -50,6 +50,16 @@ f.simplify(0.25, ('removesingletonpoints', 'choosehv', 'smoothcurves', 'ignoreex
 f.canonicalContours()
 f.canonicalStart()
 
+# let's try:
+# add extrema
+# add inflection points
+# simplify
+# add inflection points back (sometimes these get removed by simplify, and mid-curve inflections screw up te conversion to quadratic outlines)
+# convert to quadratic
+# round
+# simplify
+# ugh fontforge is so messy with this. we need to find a new tool to convert cubic to quadratic. everything i've seen in the wild is really bad. removing too many points where it shouldn't, and keeping too many where it doesn't need to . i can get infinitely better results converting the outlines by hand.
+
 f.save("build/glyphs.sfd")
 
 # todo: use setTableData to create cpal/colr
