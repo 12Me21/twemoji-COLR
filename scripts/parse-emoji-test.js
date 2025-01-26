@@ -178,6 +178,8 @@ for await (let line of lines('data/emoji-test.txt')) {
 		// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
 		if (codes.length > 2)
 			continue
+		// todo: for these, we can reuse the layers from the halfcouple glyphs. this is probably already the case due to regular layer reuse, however if we're tricky we can like, overlap  in the COLR table.
+		// like say,  holding hands (man, left half) followed by holding hands (man, right half). then, the men holding hands can refer to that whole span of the colr table.
 	}
 	
 	let data = {

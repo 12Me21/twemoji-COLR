@@ -156,6 +156,7 @@ for gname in f:
 
 f.selection.all()
 f.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE], ('noWidth'))
+f.canonicalStart()
 
 print(f.em)
 f.generate("build/glyphs.otf", flags=('opentype', 'round', 'no-hints', 'no-flex', 'short-post'))

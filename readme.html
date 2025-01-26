@@ -9,23 +9,51 @@
 	body {
 		font-family: Georgia, serif;
 	}
+	
+	table {
+		border-top: 1px solid;
+		border-bottom: 1px solid;
+		border-spacing: 0px 2px;
+	}
+	tr>* {
+		padding: 1px 3px;
+		border-right: 2px ridge;
+	}
+	tr>:last-child {
+		border-right: none;
+	}
+	th {
+		border-bottom: 2px ridge;
+	}
 </style>
 
 <h1>About Fonts</h1>
 <aside><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).</aside>
 <h2>Color Fonts</h2>
 <p>these days, emojis are usually rendered from a font file.&nbsp; nearly all fonts now use the <i>OpenType</i> (typical file extensions: <code>.ttf</code>/<code>.otf</code>/<code>.woff</code>/<code>.woff2</code>) format, but it has several different ways of storing color glyphs.
-
+	
+<figure>
 <table>
-	<tr><th>name<th>image type</tr>
-	<tr><td><code>CBDT</code><td>bitmap</tr>
-	<tr><td><code>sbix</code><td>bitmap</tr>
-	<tr><td><code>SVG&nbsp;</code><td>vector</tr>
-	<tr><td><code>COLR</code> (version 0)<td>vector (no gradients)</tr>
-	<tr><td><code>COLR</code> (version 1)<td>vector</tr>
+	<tr><th rowspan=2>common name<th rowspan=2><i>OpenType</i> tables<th rowspan=2>image type<th colspan=3>operating system support<th colspan=3>web browser support</tr>
+	<tr><th><i>Windows</i><th><i>Linux</i> (<i>FreeType</i>)<th><i>macOS</i><th><i>Chromium</i><th><i>Firefox</i><th><i>Safari</i></tr>
+	<tr><td><i>CBDT</i><td><code>CBDT</code>, <code>CBLC</code><td>bitmap
+	<td bgcolor=honeydew>yes (10)<td bgcolor=honeydew>yes (2013)<td>?<td bgcolor=honeydew>yes (2018)<td bgcolor=pink>no<td bgcolor=pink>no
+	</tr>
+	<tr><td><i>sbix</i><td><code>sbix</code><td>bitmap
+	<td bgcolor=honeydew>yes (10)<td bgcolor=honeydew>yes (2013)<td bgcolor=honeydew>yes (2011)<td bgcolor=honeydew>yes (2018)<td bgcolor=pink>no<td bgcolor=honeydew>yes (2016)
+	</tr>
+	<tr><td><i>SVG-in-OpenType</i><td><code>SVG&nbsp;</code><td>vector
+	<td bgcolor=honeydew>yes (10)<td bgcolor=peachpuff>not directly (2022)<td bgcolor=honeydew>yes<td bgcolor=pink>no<td bgcolor=honeydew>yes (2014)<td bgcolor=honeydew>yes (2019)
+	</tr>
+	<tr><td><i>COLRv0</i><td><code>COLR</code>(version 0), <code>CPAL</code><td>vector (no gradients)
+	<td bgcolor=honeydew>yes (8.1)<td bgcolor=lemonchiffon>yes* (2018?)<td bgcolor=honeydew>yes<td bgcolor=honeydew>yes (2016)<td bgcolor=honeydew>yes (2014)<td bgcolor=honeydew>yes (2018)
+	</tr>
+	<tr><td><i>COLRv1</i><td><code>COLR</code>(version 1), <code>CPAL</code><td>vector
+	<td bgcolor=honeydew>yes (10)<td bgcolor=peachpuff>not directly (2021)<td>?<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=pink>no
+	</tr>
 </table>
-<aside>Todo: collect data about which operating systems and applications support which format</aside>
-<p><i>COLRv0</i> is generally the most widely supported of these, except for some older <i>Linux</i> applications which only support <i>CBDT</i>.
+<aside>note: generally, browsers can render <u>locally-installed</u> fonts if the operating system supports the format.</aside>
+</figure>
 
 <h2>Font Names</h2>
 <p>the name of a font is stored within the file, separate from the filename.&nbsp; i.e: renaming the file won't do anything; you'll need to use a tool to change the strings in the <code>name</code> table.
@@ -55,10 +83,10 @@ most things will either use the system emoji font, or they'll have a list of fon
 
 <h2>Some Websites</h2>
 <p>some websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.
-<p>i.e:&nbsp; unless you are on <i>MacOS</i>, i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code>.&nbsp; this affects websites such as <i>Bluesky</i>, <i>Github</i>, etc (in any browser)
+<p>i.e:&nbsp; unless you are on <i>macOS</i>, i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code>.&nbsp; this affects websites such as <i>Bluesky</i>, <i>Github</i>, etc (in any browser)
 
-<h2><i>Windows</i>/<i>MacOS</i></h2>
-<p>you may be able to replace the system emoji font by installing a copy of <i>Twemoji COLR</i> with the same name as it (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>MacOS</i>).&nbsp; this affects anything that uses the system font.
+<h2><i>Windows</i>/<i>macOS</i></h2>
+<p>you may be able to replace the system emoji font by installing a copy of <i>Twemoji COLR</i> with the same name as it (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>macOS</i>).&nbsp; this affects anything that uses the system font.
 <p>however, this <em>might</em> cause problems.&nbsp; (for example, if an application tries to render emojis without color: <i>Segoe UI Emoji</i> contains black-and-white versions of the emojis, while <i>Twemoji COLR</i> doesn't).
 
 <h1>Related Works</h1>
