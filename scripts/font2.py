@@ -8,10 +8,15 @@ MARGIN = 1 # left/right bearing, in svg units
 EMOJI_SCALE = 1.125 # in `em` units. 1.125 means, at a font size of 16px, emojis will be 18px
 FULLNAME = "Twemoji COLR"
 
-EM = round((VIEWBOX / EMOJI_SCALE) * SCALE)
-WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
+def Fixed(n):
+	return round(n*SCALE)
+
+EM = Fixed(VIEWBOX / EMOJI_SCALE)
+WIDTH = Fixed(MARGIN+VIEWBOX+MARGIN)
 
 f = fontforge.open("build/glyphs.sfd")
+
+#f.hasvmetrics = True
 
 f.fontname = FULLNAME.replace(" ", "")
 f.familyname = FULLNAME
@@ -23,8 +28,8 @@ f.os2_vendor = "12;;"
 f.copyright = '(c) my balls'
 
 f.design_size = 16
-f.upos = -(WATERLINE)*SCALE + SCALE # idk ?? nothing uses this anyway
-f.uwidth = 2 * SCALE
+f.upos = Fixed(-WATERLINE+1) # idk ?? nothing uses this anyway
+f.uwidth = Fixed(2)
 
 f.os2_winascent_add = False
 f.os2_windescent_add = False
@@ -33,8 +38,8 @@ f.os2_typodescent_add = False
 f.hhea_ascent_add = False
 f.hhea_descent_add = False
 
-f.os2_winascent = (VIEWBOX-WATERLINE)*SCALE + SCALE
-f.os2_windescent = (WATERLINE)*SCALE + SCALE
+f.os2_winascent = Fixed(VIEWBOX-WATERLINE+1)
+f.os2_windescent = Fixed(WATERLINE+1)
 f.os2_typoascent = f.os2_winascent #round(712/768*EM) # idr how i calculated these, but i did. UPDATE: i got them from the hhea ascent/descent values in my copy of Roboto.
 f.os2_typodescent = -f.os2_windescent # round(-188/768*EM)
 f.os2_typolinegap = 0
@@ -144,18 +149,49 @@ f.ascent = EM - descent
 f.descent = descent
 assert f.em == EM
 
+f.horizontalBaseline = (
+	('romn', 'icfb','icft', 'ideo','idtp', 'math'),
+	(
+		('DFLT', 'romn', (
+			0, #romn
+			Fixed(-WATERLINE), #icfb
+			Fixed(VIEWBOX-WATERLINE), #icft
+			Fixed(-WATERLINE-MARGIN), #ideo
+			Fixed(VIEWBOX-WATERLINE+MARGIN), #idtp
+			Fixed(VIEWBOX/2-WATERLINE), #math
+		), ()),
+	)
+)
+
+# f.verticalBaseline = (
+# 	('romn', 'icfb','icft', 'ideo','idtp', 'math'),
+# 	(
+# 		('DFLT', 'romn', (
+# 			0, #romn
+# 			Fixed(MARGIN), #icfb
+# 			Fixed(MARGIN+VIEWBOX), #icft
+# 			Fixed(0), #ideo
+# 			Fixed(MARGIN+VIEWBOX+MARGIN), #idtp
+# 			Fixed(MARGIN+VIEWBOX/2), #math
+# 		), ()),
+# 	)
+# )
+
 for gname in f:
 	glyph = f[gname]
 	cp = glyph.unicode
 	if cp==0x200D or cp==0x20E3 or cp==0xFE0F or cp>=0xE0000:
 		glyph.width = 0
+#		glyph.vwidth = 0
 	elif glyph.glyphname in left_all:
 		glyph.width = 0
+#		glyph.vwidth = WIDTH
 	else:
 		glyph.width = WIDTH
+#		glyph.vwidth = WIDTH
 
 f.selection.all()
-f.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE], ('noWidth'))
+f.transform([1,0,0,1,Fixed(MARGIN),Fixed(VIEWBOX-WATERLINE)], ('noWidth'))
 f.canonicalStart()
 
 print(f.em)
