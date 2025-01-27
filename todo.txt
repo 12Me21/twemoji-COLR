@@ -1,0 +1,3 @@
+- fix couples emojis in vertical writing (this is broken in Segoe UI Emoji too, so like...)
+- remove 100kB of redundant glyph names from CFF table (i think this involves making it a CID keyed font or something? ugh)
+- 
