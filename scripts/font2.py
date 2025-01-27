@@ -13,8 +13,6 @@ WIDTH = round((MARGIN+VIEWBOX+MARGIN) * SCALE)
 
 f = fontforge.open("build/glyphs.sfd")
 
-f.hasvmetrics = True
-
 f.fontname = FULLNAME.replace(" ", "")
 f.familyname = FULLNAME
 f.fullname = FULLNAME
@@ -151,13 +149,10 @@ for gname in f:
 	cp = glyph.unicode
 	if cp==0x200D or cp==0x20E3 or cp==0xFE0F or cp>=0xE0000:
 		glyph.width = 0
-		glyph.vwidth = 0
 	elif glyph.glyphname in left_all:
 		glyph.width = 0
-		glyph.vwidth = 0
 	else:
 		glyph.width = WIDTH
-		glyph.vwidth = 0
 
 f.selection.all()
 f.transform([1,0,0,1,MARGIN*SCALE,(VIEWBOX-WATERLINE)*SCALE], ('noWidth'))

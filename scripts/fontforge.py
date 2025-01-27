@@ -16,6 +16,9 @@ f.descent = VIEWBOX * SCALE
 f.addLookup('any', 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
 f.addLookupSubtable('any', 'depth')
 
+glyph = f.createChar(-1, '.notdef')
+glyph.width = 0
+
 for g in glyphList:
 	name = str(g['glyphName'])
 	sys.stderr.write(f"glyph {name}\n")
