@@ -14,3 +14,9 @@ Dependencies:
 Building:
  run `make`
  outputs to `build/Twemoji.otf`
+
+
+
+- emoji size: 1.125em (same as twitter.com)
+- emoji vertical offset: -0.1875em
+i.e. at font size 16px, the emojis will be 18px high, and descend 3px below the baseline
