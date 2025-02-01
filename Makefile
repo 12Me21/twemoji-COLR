@@ -9,7 +9,7 @@ twemoji_branch = all
 .NOTPARALLEL:
 
 .PHONY: main
-main: build/Twemoji.otf
+main: build/TwemojiCOLR.otf
 
 # (sparse checkout so it doesn't take 50 years to download)
 twemoji/assets/svg:
@@ -49,8 +49,8 @@ build/glyphs.otf: build/glyphs.sfd scripts/font2.py
 	fontforge -script scripts/font2.py
 
 # generate the final font file (adding the CPAL and COLR tables because fontforge doesn't support that)
-build/Twemoji.otf: build/glyphs.otf build/cpal.ttx build/colr.ttx data/import.ttx
-	ttx -b -v -m build/glyphs.otf -o build/Twemoji.otf data/import.ttx
+build/TwemojiCOLR.otf: build/glyphs.otf build/cpal.ttx build/colr.ttx data/import.ttx
+	ttx -b -v -m build/glyphs.otf -o $@ data/import.ttx
 
 
 clean:
