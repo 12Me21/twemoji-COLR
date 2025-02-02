@@ -1,6 +1,11 @@
 <!doctype html><meta charset=utf-8>
 <title>Twemoji COLR readme</title>
 <style>
+	p {
+		max-width: 8in;
+		text-align: justify;
+		margin-left: 16px;
+	}
 	code {
 		border: 1px solid gray;
 		padding: 0 1px;
@@ -8,6 +13,7 @@
 	}
 	body {
 		font-family: Georgia, serif;
+		margin: 16px;
 	}
 	
 	table {
@@ -22,46 +28,53 @@
 	tr>:last-child {
 		border-right: none;
 	}
-	th {
+	thead th {
 		border-bottom: 2px ridge;
 	}
 </style>
 
 <h1><i>Twemoji COLR</i></h1>
-<p>
 
-<h1>About Fonts</h1>
-<aside><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).</aside>
-<h2>Color Fonts</h2>
+<p><a href=./demo.html>demo page</a>
+<p><a href=./build/TwemojiCOLR.otf>download <code>Twemoji COLR</code> (996kB)</a>	
+<p><a href=https://github.com/12Me21/twemoji-COLR.git>git repository</a>
+
+<h2>About Fonts</h2>
+<p><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).
+<h3>Color Fonts</h3>
 <p>these days, emojis are usually rendered from a font file.&nbsp; nearly all fonts now use the <i>OpenType</i> format (commonly stored as <code>.ttf</code>/<code>.otf</code>/<code>.woff</code>/<code>.woff2</code> files), but it has several different ways of storing color glyphs:
 <figure>
 <table>
+	<thead>
 	<tr><th rowspan=2>common name<th rowspan=2><i>OpenType</i> tables<th rowspan=2>image type<th colspan=4>operating system and library support<th colspan=3>web browser support</tr>
 	<tr><th><i>Windows</i><th><i>macOS</i><th><i>FreeType</i><th><i>GTK</i> (<i>Cairo</i>)<th><i>Chromium</i><th><i>Firefox</i><th><i>Safari</i>
-	
-	<tr><td><i>sbix</i><td><code>sbix</code><td>raster (PNG,JPEG,TIFF)
+	</thead>
+	<tr><th><i>sbix</i><td><code>sbix</code><td>raster (PNG, JPEG, TIFF)
 	<td bgcolor=honeydew>yes (10)<td bgcolor=honeydew>yes (2011)<td bgcolor=honeydew>yes (2013)<td bgcolor=honeydew>yes (2013)<td bgcolor=honeydew>yes (2018)<td bgcolor=peachpuff>local only<td bgcolor=honeydew>yes (2016)
 	
-	<tr><td><i>CBDT</i><td><code>CBDT</code>, <code>CBLC</code><td>raster (bitmap,PNG)
+	<tr><th><i>CBDT</i><td><code>CBDT</code>, <code>CBLC</code><td>raster (bitmap, PNG)
 	<td bgcolor=honeydew>yes (10)<td>?<td bgcolor=honeydew>yes (2013)<td bgcolor=honeydew>yes (2013)<td bgcolor=honeydew>yes (2018)<td bgcolor=peachpuff>local only<td bgcolor=pink>no
 	
-	<tr><td><i>COLRv0</i><td><code>COLR</code>(version 0), <code>CPAL</code><td>vector (flat colors only)
+	<tr><th><i>COLRv0</i><td><code>COLR</code> version 0, <code>CPAL</code><td>vector (simple fills only)
 	<td bgcolor=honeydew>yes (8.1)<td bgcolor=honeydew>yes<td bgcolor=honeydew>yes (2018)<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=honeydew>yes (2016)<td bgcolor=honeydew>yes (2014)<td bgcolor=honeydew>yes (2018)
 	
-	<tr><td><i>OpenType-SVG</i><td><code>SVG&nbsp;</code>, <code>CPAL</code>?<td>vector (with gradients/clipping)
+	<tr><th><i>OpenType-SVG</i><td><code>SVG&nbsp;</code>, <code>CPAL</code><td>vector (with gradients/clipping)
 	<td bgcolor=honeydew>yes (10)<td bgcolor=honeydew>yes<td bgcolor=pink>no<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=pink>no<td bgcolor=honeydew>yes (2014)<td bgcolor=honeydew>yes (2019)
 	
-	<tr><td><i>COLRv1</i><td><code>COLR</code>(version 1), <code>CPAL</code><td>vector (with gradients/clipping)
+	<tr><th><i>COLRv1</i><td><code>COLR</code> version 1, <code>CPAL</code><td>vector (with gradients/clipping)
 	<td bgcolor=honeydew>yes (10)<td>?<td bgcolor=pink>no<td bgcolor=lemonchiffon>yes (2023)<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=lemonchiffon>yes (2022)<td bgcolor=pink>no
 	<!-- , honeydew, lemonchiffon, peachpuff, pink -->
 </table>
 </figure>
+<p>basically: <i>COLRv0</i> has been widely adopted, but only supports simple layers with flat colors.&nbsp; it's unclear which of the more advanced formats will succeed, because <i>Google</i> refuses to support <i>OpenType-SVG</i>, and <i>Apple</i> refuses to support <i>COLRv1</i>.<br>
+	(personally i think that &ndash; while <i>OpenType-SVG</i> has a place &ndash; <i>COLRv1</i> is a far better format for distribution, because it can achieve the same results while being much easier to render)
+<p>fortunately, we don't have to worry about this, because <i>Twemoji</i> only uses solid colors anyway, so <i>COLRv0</i> is a perfect fit.
 
-<h2>Font Names</h2>
+<h3>Font Names</h3>
 <p>the name of a font is stored within the file, separate from the filename.&nbsp; i.e: renaming the file won't do anything; you'll need to use a tool to change the strings in the <code>name</code> table.
 <p>you can install multiple copies of a font under different names.
 	
-<h1>Using a Custom Emoji Font</h1>
+<h2>Using a Custom Emoji Font</h2>
 
 <blockquote>“ok but how do i actually make an application/website use this font?”</blockquote>
 
@@ -80,28 +93,30 @@ most things will either use the system emoji font, or they'll have a list of fon
 
 <p>basically, the process is different for each application and website and operating system, if it's possible at all.&nbsp; here are some that i'm aware of:
 
-<h2><i>Firefox</i></h2>
+<h3><i>Firefox</i></h3>
 <p>in <a href=about:config>about:config</a>, set <code>font.name-list.emoji</code> to <code>Twemoji COLR</code>.&nbsp; this affects <i>Firefox</i>'s UI and any website which doesn't specify its own emoji font.
 
-<h2>Some Websites</h2>
+<h3>Some Websites</h3>
 <p>some websites specify a list of emoji fonts.&nbsp; they'll use the first one they find, and the list almost always begins with <code>Apple Color Emoji, Segoe UI Emoji, ...</code>.
 <p>i.e:&nbsp; unless you are on <i>macOS</i>, i recommend installing a copy of <i>Twemoji COLR</i> with its name set to <code>Apple Color Emoji</code>.&nbsp; this affects websites such as <i>Bluesky</i>, <i>Github</i>, etc (in any browser)
 
-<h2><i>Windows</i>, <i>macOS</i></h2>
+<h3><i>Windows</i>, <i>macOS</i></h3>
 <p>you <em>might</em> be able to replace the system emoji font by installing a copy of <i>Twemoji COLR</i> with the same name as it (<code>Segoe UI Emoji</code> on <i>Windows</i>, or <code>Apple Color Emoji</code> on <i>macOS</i>).&nbsp; this affects anything that uses the system font.
 <p>however, this could cause problems.&nbsp; (for example, if an application tries to render emojis without color: <i>Segoe UI Emoji</i> contains black-and-white versions of the emojis, while <i>Twemoji COLR</i> doesn't).
 	
-<h2><i>Linux</i> (<i>FontConfig</i>)</h2>
+<h3><i>Linux</i> (<i>FontConfig</i>)</h3>
 <p>good luck.&nbsp; you can probably just uninstall other emoji fonts (particularly <i>Noto Color Emoji</i>) until it uses the one you want.
 
-<h1>Related Works</h1>
+<h2>Related Works</h2>
 
 <table>
-	<tr><th>project<th>color format<th>emoji version<th>has black-and-white<br>fallback glyphs?</tr>
-	<tr><td><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType-SVG<td>15.1 (2024)<td>yes</tr>
-	<tr><td><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr<td>COLRv0<td bgcolor=pink>14.0 (2022)<td>no</tr>
-	<tr><td><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR<td>COLRv0<td>15.1 (2024)<td>no</tr>
-	<tr><td><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf<td>CBDT<td>15.1 (2024)<td>no</tr>
+	<thead>
+		<tr><th>project<th>color format<th>emoji version<th>has black-and-white<br>fallback glyphs?</tr>
+	</thead>
+	<tr><th><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType-SVG<td>15.1 (2024)<td>yes</tr>
+	<tr><th><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr</a><td>COLRv0<td bgcolor=pink>14.0 (2022)<td>no</tr>
+	<tr><th><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR</a><td>COLRv0<td>15.1 (2024)<td>no</tr>
+	<tr><th><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf</a><td>CBDT<td>15.1 (2024)<td>no</tr>
 </table>
 
 <p>my font was designed to replace <i>Twemoji Mozilla</i>, which hasn't been updated in a while and has some broken dependencies.
@@ -109,25 +124,24 @@ most things will either use the system emoji font, or they'll have a list of fon
 <p>i've also added margins and increased the size of the emojis relative to other text, to match other emoji fonts (including twitter itself).
 	
 <figure style="font-family:sans-serif">
-	Before: <img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><img src="./smiling.svg" width=15 height=15 style="vertical-align:-2px"><br>
+	Before: <img src="./smiling.svg" width=16 height=16 style="vertical-align:-2px"><img src="./smiling.svg" width=16 height=16 style="vertical-align:-2px"><img src="./smiling.svg" width=16 height=16 style="vertical-align:-2px"><br>
 After: <img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;"><img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;"><img src="./smiling.svg" width=18 height=18 style="vertical-align:-3px;margin:0 1px;">
 </figure>
 
+<h2>unfinished zone</h2>
+<pre>
+further reading
+
 general truetype/opentype sources:
-(very old, mostly not relevant, but nostalgic) https://www.truetype-typography.com
-Apple TrueType/AAT spec (old, but i prefer it to microsoft's documentation, in places where it's still relevant) https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6.html
-Microsoft OpenType spec (current) https://learn.microsoft.com/en-us/typography/opentype/spec/
+(very old, mostly not relevant, but nostalgic) <a href=https://www.truetype-typography.com>TrueType Typography: info about TTF fonts &amp; technology</a>
+Apple TrueType/AAT spec (old, but i prefer it to microsoft's documentation, in places where it's still relevant) <a href=https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6.html>TrueType Reference Manual</a>
+Microsoft OpenType spec (current) <a href=https://learn.microsoft.com/en-us/typography/opentype/spec/>OpenType® Specification</a>
 
-discussing the future formats (2013): https://www.fontlab.com/news/color-font-format-proposals/
-i dont really like these two (they're a product of their time, not very relevant now), but everyone's read them, so you should be aware:
-https://www.colorfonts.wtf/
-https://pixelambacht.nl/2014/multicolor-fonts/
+discussing the future formats: <a href=https://www.fontlab.com/news/color-font-format-proposals/>Color fonts. Overview of the proposals for color extensions of the OpenType font format. (2013)</a>
+everyone has encountered these two: <a href=https://pixelambacht.nl/2014/multicolor-fonts/>Colorful typography on the web: get ready for multicolor fonts (2014)</a>, <a href=https://www.colorfonts.wtf>Color Fonts - Get ready for the revolution! (2017)</a>
 
-surface-level, but up to date: https://typography.guru/academy/color-fonts-course/introduction-r75/
+surface-level, but up to date: <a href=https://typography.guru/academy/color-fonts-course/>How to use color fonts (2023)</a>
 
-mildly interesting, discussing a typical scenario of beginning to support color fonts https://www.qt.io/blog/emoji-in-qt-6.9
+discussing a typical scenario of beginning to support color fonts: <a href=https://www.qt.io/blog/emoji-in-qt-6.9>Emoji in Qt 6.9 (2025)</a>
 
-i remember reading this a long time ago: https://faultlore.com/blah/text-hates-you/
-
-
-currently, google and apple are fighting over COLRv1 vs OpenType-SVG. meanwhile, COLRv0 has succeeded as the most widely supported vector format, setting the stage for COLRv1 to win
+i remember reading this a long time ago: <a href=https://faultlore.com/blah/text-hates-you/>Text Rendering Hates You (2019)</a>
