@@ -18,6 +18,8 @@ f.addLookupSubtable('any', 'depth')
 
 glyph = f.createChar(-1, '.notdef')
 glyph.width = 0
+glyph = f.createChar(-1, '.null')
+glyph.width = 0
 
 for g in glyphList:
 	name = str(g['glyphName'])
