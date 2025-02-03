@@ -65,6 +65,11 @@ let varsel = {__proto__:null}
 
 import hardcoded_couples from '../data/decouple.json' with {type:'json'}
 
+let halfs = {}
+for (let [k,v] of Object.entries(hardcoded_couples)) {
+	halfs[v.people[0]]
+}
+
 function decode_couple(str) {
 	if (hardcoded_couples[str])
 		return hardcoded_couples[str]

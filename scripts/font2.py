@@ -111,7 +111,7 @@ def create_couple(glyph, cdata):
 glyphList = json.load(open('build/glyphs.json'))
 for g in glyphList:
 	name = str(g['glyphName'])
-	if 'decouple' in g:
+	#if 'decouple' in g:
 		# explode and kill them !!!
 		#glyph = f[name]
 		#glyph.addPosSub('decouple-1', g['decouple'])
@@ -119,13 +119,29 @@ for g in glyphList:
 		glyph = f.createChar(-1, name)
 		create_couple(glyph, g['couple'])
 
+f.addLookup("hc_1", 'gsub_ligature', None, [("ccmp",[("DFLT",["dflt"])])])
+f.addLookupSubtable("hc_1", "hc_1b")
+f.addLookup("hc_2", 'gsub_multiple', None, ())
+f.addLookupSubtable("hc_2", "hc_2b")
+
 decouple = json.load(open('data/decouple.json'))
+
 for source in decouple:
+	# we want to create:
+	# in hc_1, map source -> left half
+	# in hc_2, map left half -> left half + right half
+	couple = decouple[source]
+	parts = [f"couple_{couple['type']}_{lname([ord(c) for c in person])}_left" for person in couple['people']]
+	left = f[parts[0]]
+	left.addPosSub("hc_1b", gnames(source))
+	right = f[parts[0]]
+	right.addPosSub("hc_1b", gnames(source))
+	
 # ok so what if, e.g.
 # match "🤝🏽" -> activate 2 substitutions
 # 1: 🤝🏽 -> (the left half)
 # 2: (the left half) -> (the left half) + (the right half)
-	
+	# WAIT no this all can't work. because we have the holding hands emojis where the left and right people might be different gender.. ugh
 
 left_all = []
 right_all = []
