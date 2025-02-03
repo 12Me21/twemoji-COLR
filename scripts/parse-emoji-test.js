@@ -63,27 +63,7 @@ for (let i=0;i<26;i++) {
 // e.g. 6 means that the character always appears with either a skin tone modifier or a varation selector 16
 let varsel = {__proto__:null}
 
-// current: 
-// e.g. 👭+🏻 -> 👭🏻 (single glyph, in regular ccmp)
-// 👭🏻 -> 👩🏻+‍+🤝+‍+👩🏻 (in decouple)
-// 👩🏻+‍+🤝+‍+👩🏻 -> left+right (in couple)
-// what if instead:
-// 👭+🏻 -> left+right, /directly/
-
-function hcs(type, base, people) {
-	return Object.fromEntries(["","🏻","🏼","🏽","🏾","🏿"].map(skin=>{
-		return [base+skin, {type, people: people.map(p=>p+skin)}]
-	}))
-}
-
-let hardcoded_couples = {
-	...hcs('hh', "👭", ["👩","👩"]),
-	...hcs('hh', "👫", ["👩","👨"]),
-	...hcs('hh', "👬", ["👨","👨"]),
-	...hcs('k', "💏", ["🧑","🧑"]),
-	...hcs('wh', "💑", ["🧑","🧑"]),
-	...hcs('hs', "🤝", ["🫱","🫲"]),
-}
+import hardcoded_couples from '../data/decouple.json' with {type:'json'}
 
 function decode_couple(str) {
 	if (hardcoded_couples[str])
@@ -161,12 +141,12 @@ for await (let line of lines('data/emoji-test.txt')) {
 	}
 	data.name = name
 	data.emoji = str
-	if (hardcoded_couples[str]) {
+	/*if (hardcoded_couples[str]) {
 		let couple = hardcoded_couples[str]
 		data.decouple = couple.people.map((p,i)=>{
 			return couple_half_gname([couple.type, gname([...p].map(x=>x.codePointAt())), ['left','right'][i]])
 		})
-	}
+	}*/
 	if (codes2.length==1) {
 		data.encoding = [+(codes2[0]), null]
 	} else {

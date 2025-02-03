@@ -72,7 +72,7 @@ couples = {
 	"wh": (person_list, gnames("‍❤"), gnames("‍"), person_list),
 }
 
-# destroy couple emojis !!
+# handle hardcoded couple emojis
 f.addLookup('decouple', 'gsub_multiple', None, [("ccmp",[("DFLT",["dflt"])])], 'any')
 f.addLookupSubtable('decouple', 'decouple-1')
 
@@ -113,11 +113,19 @@ for g in glyphList:
 	name = str(g['glyphName'])
 	if 'decouple' in g:
 		# explode and kill them !!!
-		glyph = f[name]
-		glyph.addPosSub('decouple-1', g['decouple'])
+		#glyph = f[name]
+		#glyph.addPosSub('decouple-1', g['decouple'])
 	if 'couple' in g:
 		glyph = f.createChar(-1, name)
 		create_couple(glyph, g['couple'])
+
+decouple = json.load(open('data/decouple.json'))
+for source in decouple:
+# ok so what if, e.g.
+# match "🤝🏽" -> activate 2 substitutions
+# 1: 🤝🏽 -> (the left half)
+# 2: (the left half) -> (the left half) + (the right half)
+	
 
 left_all = []
 right_all = []
