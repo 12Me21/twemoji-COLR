@@ -63,21 +63,91 @@ for (let i=0;i<26;i++) {
 // e.g. 6 means that the character always appears with either a skin tone modifier or a varation selector 16
 let varsel = {__proto__:null}
 
-import hardcoded_couples from '../data/decouple.json' with {type:'json'}
+let decouples = {
+	"👭":["👩","‍","🤝","‍","👩"],
+	"👭🏻":["👩🏻","‍","🤝","‍","👩🏻"],
+	"👭🏼":["👩🏼","‍","🤝","‍","👩🏼"],
+	"👭🏽":["👩🏽","‍","🤝","‍","👩🏽"],
+	"👭🏾":["👩🏾","‍","🤝","‍","👩🏾"],
+	"👭🏿":["👩🏿","‍","🤝","‍","👩🏿"],
+	"👫":["👩","‍","🤝","‍","👨"],
+	"👫🏻":["👩🏻","‍","🤝","‍","👨🏻"],
+	"👫🏼":["👩🏼","‍","🤝","‍","👨🏼"],
+	"👫🏽":["👩🏽","‍","🤝","‍","👨🏽"],
+	"👫🏾":["👩🏾","‍","🤝","‍","👨🏾"],
+	"👫🏿":["👩🏿","‍","🤝","‍","👨🏿"],
+	"👬":["👨","‍","🤝","‍","👨"],
+	"👬🏻":["👨🏻","‍","🤝","‍","👨🏻"],
+	"👬🏼":["👨🏼","‍","🤝","‍","👨🏼"],
+	"👬🏽":["👨🏽","‍","🤝","‍","👨🏽"],
+	"👬🏾":["👨🏾","‍","🤝","‍","👨🏾"],
+	"👬🏿":["👨🏿","‍","🤝","‍","👨🏿"],
+	"💏":["🧑","‍","❤","‍","💋","‍","🧑"],
+	"💏🏻":["🧑🏻","‍","❤","‍","💋","‍","🧑🏻"],
+	"💏🏼":["🧑🏼","‍","❤","‍","💋","‍","🧑🏼"],
+	"💏🏽":["🧑🏽","‍","❤","‍","💋","‍","🧑🏽"],
+	"💏🏾":["🧑🏾","‍","❤","‍","💋","‍","🧑🏾"],
+	"💏🏿":["🧑🏿","‍","❤","‍","💋","‍","🧑🏿"],
+	"💑":["🧑","‍","❤","‍","🧑"],
+	"💑🏻":["🧑🏻","‍","❤","‍","🧑🏻"],
+	"💑🏼":["🧑🏼","‍","❤","‍","🧑🏼"],
+	"💑🏽":["🧑🏽","‍","❤","‍","🧑🏽"],
+	"💑🏾":["🧑🏾","‍","❤","‍","🧑🏾"],
+	"💑🏿":["🧑🏿","‍","❤","‍","🧑🏿"],
+	/*"🤝":["🫱","‍","🫲"],
+	"🤝🏻":["🫱🏻","‍","🫲🏻"],
+	"🤝🏼":["🫱🏼","‍","🫲🏼"],
+	"🤝🏽":["🫱🏽","‍","🫲🏽"],
+	"🤝🏾":["🫱🏾","‍","🫲🏾"], don't decouple these i guess, because the matching skintone handshakes are a special case where they shift the color of one hand to make it stand out more
+	"🤝🏿":["🫱🏿","‍","🫲🏿"],*/
+}
 
-let halfs = {}
-for (let [k,v] of Object.entries(hardcoded_couples)) {
-	halfs[v.people[0]]
+let hardcoded_couples = {
+	"👭":"👩‍🤝‍👩",
+	"👭🏻":"👩🏻‍🤝‍👩🏻",
+	"👭🏼":"👩🏼‍🤝‍👩🏼",
+	"👭🏽":"👩🏽‍🤝‍👩🏽",
+	"👭🏾":"👩🏾‍🤝‍👩🏾",
+	"👭🏿":"👩🏿‍🤝‍👩🏿",
+	"👫":"👩‍🤝‍👨",
+	"👫🏻":"👩🏻‍🤝‍👨🏻",
+	"👫🏼":"👩🏼‍🤝‍👨🏼",
+	"👫🏽":"👩🏽‍🤝‍👨🏽",
+	"👫🏾":"👩🏾‍🤝‍👨🏾",
+	"👫🏿":"👩🏿‍🤝‍👨🏿",
+	"👬":"👨‍🤝‍👨",
+	"👬🏻":"👨🏻‍🤝‍👨🏻",
+	"👬🏼":"👨🏼‍🤝‍👨🏼",
+	"👬🏽":"👨🏽‍🤝‍👨🏽",
+	"👬🏾":"👨🏾‍🤝‍👨🏾",
+	"👬🏿":"👨🏿‍🤝‍👨🏿",
+	"💏":"🧑‍❤️‍💋‍🧑",
+	"💏🏻":"🧑🏻‍❤️‍💋‍🧑🏻",
+	"💏🏼":"🧑🏼‍❤️‍💋‍🧑🏼",
+	"💏🏽":"🧑🏽‍❤️‍💋‍🧑🏽",
+	"💏🏾":"🧑🏾‍❤️‍💋‍🧑🏾",
+	"💏🏿":"🧑🏿‍❤️‍💋‍🧑🏿",
+	"💑":"🧑‍❤️‍🧑",
+	"💑🏻":"🧑🏻‍❤️‍🧑🏻",
+	"💑🏼":"🧑🏼‍❤️‍🧑🏼",
+	"💑🏽":"🧑🏽‍❤️‍🧑🏽",
+	"💑🏾":"🧑🏾‍❤️‍🧑🏾",
+	"💑🏿":"🧑🏿‍❤️‍🧑🏿",
+	"🤝":"🫱‍🫲",
+	"🤝🏻":"🫱🏻‍🫲🏻",
+	"🤝🏼":"🫱🏼‍🫲🏼",
+	"🤝🏽":"🫱🏽‍🫲🏽",
+	"🤝🏾":"🫱🏾‍🫲🏾",
+	"🤝🏿":"🫱🏿‍🫲🏿",
 }
 
 function decode_couple(str) {
-	if (hardcoded_couples[str])
-		return hardcoded_couples[str]
+	str = hardcoded_couples[str] || str
 	let m
 	m = /^(🫱[🏻-🏿]?)‍(🫲[🏻-🏿]?)$/u.exec(str)
 	if (m) {
 		let [_,person1,person2] = m
-		return {type:'hs', people:[person1, person2]}
+		return {type:'hs',people:[person1, person2]}
 	}
 	m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
 	if (m) {
@@ -134,7 +204,7 @@ for await (let line of lines('data/emoji-test.txt')) {
 			})
 		}
 		// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
-		if (codes.length > 1)
+		if (codes.length > 2)
 			continue
 		// todo: for these, we can reuse the layers from the halfcouple glyphs. this is probably already the case due to regular layer reuse, however if we're tricky we can like, overlap  in the COLR table.
 		// like say,  holding hands (man, left half) followed by holding hands (man, right half). then, the men holding hands can refer to that whole span of the colr table.
@@ -146,12 +216,9 @@ for await (let line of lines('data/emoji-test.txt')) {
 	}
 	data.name = name
 	data.emoji = str
-	/*if (hardcoded_couples[str]) {
-		let couple = hardcoded_couples[str]
-		data.decouple = couple.people.map((p,i)=>{
-			return couple_half_gname([couple.type, gname([...p].map(x=>x.codePointAt())), ['left','right'][i]])
-		})
-	}*/
+	if (decouples[str]) {
+		data.decouple = decouples[str].map(x=>gname([...x].map(x=>x.codePointAt())))
+	}
 	if (codes2.length==1) {
 		data.encoding = [+(codes2[0]), null]
 	} else {
@@ -167,10 +234,6 @@ function gname(codes) {
 			return u
 		return "u"+u
 	}).join("_")
-}
-
-function couple_half_gname([type, pers, half]) {
-	return `couple_${type}_${pers}_${half}`
 }
 
 process.stdout.write("[")
@@ -193,7 +256,8 @@ for (let data of emojis) {
 }
 
 for (let data of couples) {
-	data.glyphName = couple_half_gname(data.couple)
+	let [type, pers, half] = data.couple
+	data.glyphName = `couple_${type}_${pers}_${half}`
 	print_item(data)
 }
 
