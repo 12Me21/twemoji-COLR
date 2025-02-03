@@ -51,10 +51,25 @@ f.hhea_linegap = 0
 #f.os2_panose = (5, 2, 1, 0, 1, 2, 2, 2, 2, 2)
 #f.os2_family_class = 3072
 
+
+def make_skin_list(base):
+	l = []
+	for skin in range(6):
+		l += [gname(base) if skin==0 else lname([base,0x1F3FB+skin-1])]
+	return l
+
+person_list = sum([make_skin_list(ord(p)) for p in "🧑👨👩"], [])
+hand_list_left = make_skin_list(ord("🫱"))
+hand_list_right = make_skin_list(ord("🫲"))
+
+def gnames(string):
+	return [gname(ord(b)) for b in string]
+
 couples = {
-	"hands": ("‍🤝", "‍"),
-	"kiss": ("‍❤‍💋", "‍"),
-	"heart": ("‍❤", "‍"),
+	"hs": (hand_list_left, gnames(""), gnames("‍"), hand_list_right),
+	"hh": (person_list, gnames("‍🤝"), gnames("‍"), person_list),
+	"k": (person_list, gnames("‍❤‍💋"), gnames("‍"), person_list),
+	"wh": (person_list, gnames("‍❤"), gnames("‍"), person_list),
 }
 
 # destroy couple emojis !!
@@ -68,30 +83,30 @@ for c in couples:
 	name = "couple_"+c
 	
 	f.addLookup(name+"_left", 'gsub_ligature', None, ())
-	f.addLookupSubtable(name+"_left", name+"_left2")
+	f.addLookupSubtable(name+"_left", name+"_leftsub")
 	f.addLookup(name+"_right", 'gsub_ligature', None, ())
-	f.addLookupSubtable(name+"_right", name+"_right2")
-
-person_list = []
-for gender in range(3):
-	base = ord("🧑👨👩"[gender])
-	for skin in range(6):
-		person_list += [gname(base) if skin==0 else lname([base,0x1F3FB+skin-1])]
+	f.addLookupSubtable(name+"_right", name+"_rightsub")
+	
+	# couple_<name>_leftsub and couple_<name>_rightsub are conditional subsitutions
+	# they activate when our main uhh contextual chaining subtable detects a match.
+	# _leftsub replaces the beginning of the couple ligature with the left person in the couple, while _rightsub replaces the ending with the right person in the couple.
+	# for example, with the sequence: man + zwj + heart + zwj + person
+	# man+zwj+heart is replaced by the left half-couple
+	# zwj+person is replaced by the right half-couple
+	# the matching is done by the contextual chaining subtables couple_<name>_first and _second, which enable the substitution subtables couple_<name>_leftsub and _rightsub
 
 def create_couple(glyph, cdata):
 	ctype = cdata[0]
-	num = cdata[1]
+	pers = cdata[1]
 	side = cdata[2]
 	
 	c = couples[ctype]
 	cname = "couple_"+ctype
-	before = c[0]
-	after = c[1]
 	
 	if side=="left":
-		glyph.addPosSub(cname+"_left2", [person_list[num]] + [gname(ord(b)) for b in before])
+		glyph.addPosSub(cname+"_leftsub", [pers] + c[1])
 	else:
-		glyph.addPosSub(cname+"_right2", [gname(ord(b)) for b in after] + [person_list[num]])
+		glyph.addPosSub(cname+"_rightsub", c[2] + [pers])
 
 glyphList = json.load(open('build/glyphs.json'))
 for g in glyphList:
@@ -104,36 +119,31 @@ for g in glyphList:
 		glyph = f.createChar(-1, name)
 		create_couple(glyph, g['couple'])
 
-def cname(str):
-	if len(str)==1:
-		return gname(ord(str))
-	return lname([ord(c) for c in str])
-
 left_all = []
 right_all = []
 # and now, we try
 for cname in couples:
 	name = f"couple_{cname}"
 	c = couples[cname]
-	before = c[0]
-	after = c[1] # note this must be a single character only !
 	
 	left_list = []
-	for x in range(0, 3*6):
+	for x in c[0]:
 		left_list += [f"{name}_{x}_left"]
 		left_all += [f"{name}_{x}_left"]
+	for x in c[3]:
 		right_all += [f"{name}_{x}_right"]
 	
-	covs_person = "["+" ".join(person_list)+"]"
-	covs_before = " ".join(["["+gname(ord(b))+"]" for b in before])
-	covs_after = " ".join(["["+gname(ord(b))+"]" for b in after])
+	covs_0 = "["+" ".join(c[0])+"]"
+	covs_1 = " ".join([f"[{n}]" for n in c[1]])
+	covs_2 = " ".join([f"[{n}]" for n in c[2]])
+	covs_3 = "["+" ".join(c[3])+"]"
 	covs_left = "["+" ".join(left_list)+"]"
 	
-	rule1 = f"| {covs_person} @<{name}_left> {covs_before} | {covs_after} {covs_person}"
-	rule2 = f"{covs_left} | {covs_after} @<{name}_right> {covs_person} |"
+	rule1 = f"| {covs_0} @<{name}_left> {covs_1} | {covs_2} {covs_3}"
+	rule2 = f"{covs_left} | {covs_2} @<{name}_right> {covs_3} |"
 	
-	f.addContextualSubtable('couples', name+"_2", 'coverage', rule2)
-	f.addContextualSubtable('couples', name+"_1", 'coverage', rule1)
+	f.addContextualSubtable('couples', name+"_second", 'coverage', rule2)
+	f.addContextualSubtable('couples', name+"_first", 'coverage', rule1)
 #1012044
 #1012240
 #1011844 bad

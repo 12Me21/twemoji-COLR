@@ -94,6 +94,12 @@ let decouples = {
 	"💑🏽":["🧑🏽","‍","❤","‍","🧑🏽"],
 	"💑🏾":["🧑🏾","‍","❤","‍","🧑🏾"],
 	"💑🏿":["🧑🏿","‍","❤","‍","🧑🏿"],
+	/*"🤝":["🫱","‍","🫲"],
+	"🤝🏻":["🫱🏻","‍","🫲🏻"],
+	"🤝🏼":["🫱🏼","‍","🫲🏼"],
+	"🤝🏽":["🫱🏽","‍","🫲🏽"],
+	"🤝🏾":["🫱🏾","‍","🫲🏾"], don't decouple these i guess, because the matching skintone handshakes are a special case where they shift the color of one hand to make it stand out more
+	"🤝🏿":["🫱🏿","‍","🫲🏿"],*/
 }
 
 let hardcoded_couples = {
@@ -127,14 +133,29 @@ let hardcoded_couples = {
 	"💑🏽":"🧑🏽‍❤️‍🧑🏽",
 	"💑🏾":"🧑🏾‍❤️‍🧑🏾",
 	"💑🏿":"🧑🏿‍❤️‍🧑🏿",
+	"🤝":"🫱‍🫲",
+	"🤝🏻":"🫱🏻‍🫲🏻",
+	"🤝🏼":"🫱🏼‍🫲🏼",
+	"🤝🏽":"🫱🏽‍🫲🏽",
+	"🤝🏾":"🫱🏾‍🫲🏾",
+	"🤝🏿":"🫱🏿‍🫲🏿",
 }
 
 function decode_couple(str) {
 	str = hardcoded_couples[str] || str
-	let m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
-	if (!m) return null
-	let [_,person1,type,person2] = m
-	return {person1,type,person2}
+	let m
+	m = /^(🫱[🏻-🏿]?)‍(🫲[🏻-🏿]?)$/u.exec(str)
+	if (m) {
+		let [_,person1,person2] = m
+		return {type:'hs',people:[person1, person2]}
+	}
+	m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
+	if (m) {
+		let [_,person1,type,person2] = m
+		type = {"🤝":"hh","❤️‍💋":"k","❤️":"wh"}[type]
+		return {type, people:[person1, person2]}
+	}
+	return null
 }
 
 // read/parse lines from files
@@ -163,15 +184,22 @@ for await (let line of lines('data/emoji-test.txt')) {
 	let couple = decode_couple(str)
 	if (couple) {
 		// use the couples with 2 of the same person-type as sources
-		let type = {"🤝":"hands","❤️‍💋":"kiss","❤️":"heart"}[couple.type];
-		if (couple.person1==couple.person2) {
-			let id = {"🧑":0,"🧑🏻":1,"🧑🏼":2,"🧑🏽":3,"🧑🏾":4,"🧑🏿":5,"👨":6+0,"👨🏻":6+1,"👨🏼":6+2,"👨🏽":6+3,"👨🏾":6+4,"👨🏿":6+5,"👩":12+0,"👩🏻":12+1,"👩🏼":12+2,"👩🏽":12+3,"👩🏾":12+4,"👩🏿":12+5}[couple.person1]
+		let use = couple.people[0] == couple.people[1]
+		// except for handshakes, where we want differing skin tones
+		if (couple.type=='hs') {
+			// todo: we don't actually have a reference file for the
+			// right hand with yellow skin
+			// (since that one only appears in the 🤝 emoji where it's darkened since both hands are the same skintone)
+			// so for combinations outside of unicode (like "🫱🏿‍🫲") the right hand will be the wrong color. i know what the correct colors are but they can't be determined automatically, i would have to hardcode it. that's fine though. but i'll do it later.
+			use = ["🫱🏻‍🫲🏼","🫱🏼‍🫲🏽","🫱🏽‍🫲🏾","🫱🏾‍🫲🏿","🫱🏿‍🫲🏻","🤝"].includes(str)
+		}
+		if (use) {
 			couples.push({
-				couple: [type, id, "left"],
+				couple: [couple.type, gname([...couple.people[0]].map(x=>x.codePointAt())), "left"],
 				file,
 			})
 			couples.push({
-				couple: [type, id, "right"],
+				couple: [couple.type, gname([...couple.people[1]].map(x=>x.codePointAt())), "right"],
 				file,
 			})
 		}
@@ -228,8 +256,8 @@ for (let data of emojis) {
 }
 
 for (let data of couples) {
-	let [type, id, half] = data.couple
-	data.glyphName = `couple_${type}_${id}_${half}`
+	let [type, pers, half] = data.couple
+	data.glyphName = `couple_${type}_${pers}_${half}`
 	print_item(data)
 }
 
