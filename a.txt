@@ -1,3 +1,0 @@
-1: split couples emoji svg files into halfs. discard original files
-2: for each file that is part of a skin color variants set (contains 6 items), merge them, with fill="var(--name)" colors (note: use medium skin tone as a reference)
-this will bottleneck the total number of files down to around ⅕th. i claim that we can reconstruct everything from that.
