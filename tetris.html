@@ -287,7 +287,7 @@
 				if (x==1)
 					col.name = 'color', col.value = this.$shape.getAttribute('fill')//.replace(/^#/,'')
 				else
-					col.name = 'note', col.value = this.$shape.nodeName
+					col.name = 'note'//, col.value = this.$shape.nodeName
 			}
 			
 			l._layer = this
@@ -326,6 +326,7 @@
 	
 	function convertToAbsolute(path){
 		let d = path.getAttribute('d')
+		return [d]
 		// idea to write svg paths: 
 		// use +/- for all relative coords, and no sign for absolute (this is assuming the svg has origin at 0,0)
 		if (d.includes('|'))
@@ -445,14 +446,14 @@
 	}
 	
 	function go(name) {
-		//let n = load('original/simple/'+name+'.svg')
-		let n = load('original/'+name+'/neutral.svg')
-		let m = load('original/'+name+'/male.svg')
-		let f = load('original/'+name+'/female.svg')
+		let n = load('ts/simple/'+name+'.svg')
+		//let n = load('original/'+name+'/neutral.svg')
+		//let m = load('original/'+name+'/male.svg')
+		//let f = load('original/'+name+'/female.svg')
 		let b = undefined//load('original/'+name+'/mixed.svg')
 		let lists = []
 		let layermap = new Map()
-		let vars = [n,m,f]//,b]
+		let vars = [n]//,m,f]//,b]
 		vars = vars.map((x,i)=>{
 			if (!x)
 				return
@@ -464,7 +465,7 @@
 			let addshape = (shape)=>{
 				let fill = shape.getAttribute('fill')
 				let key = make_bitmap(shape)//shape.outerHTML
-				let existing = layermap.get(key)
+				let existing = 0 && layermap.get(key)
 				j++;
 				if (existing) {
 					existing.add_gender(gender, fill)
@@ -495,6 +496,24 @@
 						addshape(n)
 					}
 					continue
+				}
+				if (shape instanceof SVGEllipseElement) {
+					let tf = shape.getAttribute('transform')
+					let angle
+					// fix 3-arg rotate
+					/*if (tf) {
+						rotate = tf.match(/rotate\([,\s]+([-+eE0-9.]+[,\s]+([-+eE0-9.]+[,\s]+([-+eE0-9.]+)[,\s]+\)/)
+						if (rotate) {
+							const v=v=>+v.baseVal.valueAsString //shh
+							let x=v(shape.cx), y=v(shape.cy)
+							
+							let point = new DOMPoint(x,y)
+							let tf = shape.transform.baseVal[0]
+							let matrix = tf.matrix
+							let point.matrixTransform(matrix)
+							shape.setAttribute('transform', `translate() {} rotate(${rotate[1]})`)
+						}
+					}*/
 				}
 				addshape(shape)
 			}
@@ -531,7 +550,7 @@
 			let shape = layer.cloneShape()
 			let note = x.querySelector('input[name=note]').value
 			
-			shape.setAttribute('data-gender', gender)
+			//shape.setAttribute('data-gender', gender)
 			
 			let color = layer.genders.neutral || layer.genders.male || layer.genders.female || layer.genders.mixed
 			let extracolors = [undefined,undefined]

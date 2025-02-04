@@ -215,6 +215,9 @@ class Point {
 	Divide(s) {
 		return new Point(this.x/s, this.y/s)
 	}
+	Divide2(p) {
+		return new Point(this.x/p.x, this.y/p.y)
+	}
 	Middle(p) {
 		return new Point((this.x+p.x)/2, (this.y+p.y)/2)
 	}
@@ -226,6 +229,9 @@ class Point {
 	}
 	Multiply1(s) {
 		return new Point(this.x*s, this.y*s)
+	}
+	Multiply2(p) {
+		return new Point(this.x*p.x, this.y*p.y)
 	}
 	static Parse(x, y, pos) {
 		if (pos)
@@ -270,8 +276,11 @@ class SegL extends Seg {
 	}
 	round() {
 	}
-	Middle() {
-		return new SegL()
+	Middle(seg) {
+		if (seg instanceof SegL)
+			return new SegL()
+		if (seg instanceof SegC)
+			return new SegL()
 	}
 }
 SegL.prototype.letter = "l"
@@ -327,7 +336,10 @@ class SegC extends Seg {
 		this.c2.round(...a)
 	}
 	Middle(seg) {
-		return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
+		if (seg instanceof SegC)
+			return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
+		if (seg instanceof SegL)
+			return new SegL()
 	}
 }
 SegC.prototype.letter = "c"
@@ -411,6 +423,9 @@ class SegA extends Seg {
 			this.radius.x *= -1
 			this.radius.y *= -1
 		}
+	}
+	fmt1() {
+		return `${this.radius.fmt()} ${this.angle.fmt()} ${this.large?"1":"0"}${this.sweep?"1":"0"}`
 	}
 }
 SegA.prototype.letter = "a"
@@ -844,134 +859,123 @@ function rotate_to_gap(c) {
 	}
 }
 
-function unparse_rel(contours) {
+function unparse(contours, abs) {
+	return contours.map(x=>abs ? x.unparse_abs() : x.unparse_rel()).join(" ")
+}
+
+Contour.prototype.unparse_rel = function() {
+	rotate_to_gap(this)
+	
+	//console.warn('m', c.length)
 	let out = ""
-	outer: for (let c of contours) {
-		rotate_to_gap(c)
-		
-		//console.warn('m', c.length)
-		let prev = c[0]
-		if (out)
-			out += " "
-		out += "M "+prev
-		for (let i=1; i<c.length; i+=2) {
-			let seg = c[i]
-			let short
-			if (seg instanceof SegC) {
-				let pp = c.get(i-1)
-				let pc = c[i-2] // do NOT use get()here, we need this to NOT wrap around
-				let d = seg.c1.Subtract(pp)
-				
-				if (pc instanceof SegC) {
-					let e = pp.Subtract(d).Subtract(pc.c2)
-					// todo: we should average the err between the prev and nex controlpoints
-					//console.warn("S try. current point:", pp, "prev command:", pc, "command:", seg)
-					
-					if (e.hypot() <= 0.001e5*10) {
-						console.warn('S try', String(e))
-						//balance_cubic(c, i)
-					}
-					if (e.hypot() <= 0.01e5 * 0) {
-						//console.warn('s ok')
-						//print('S try', ex,ey)
-						short = true
-					}
-				} else {
-					if (d.x==0 && d.y==0)
-						short = true
-				}
-			} else if (seg instanceof SegQ) {
-				let pp = c.get(i-1)
-				let pc = c[i-2]
-				let d = seg.c.Subtract(pp)
-				
-				if (pc instanceof SegQ) {
-					let e = pp.Subtract(d).Subtract(pc.c)
-					// todo: we should average the err between the prev and nex controlpoints
-					if (e.hypot() <= 100000*0)
-						short = true
-				} else {
-					if (d.x==0 && d.y==0)
-						short = true
-				}
-			}
-			let pos = c.get(i+1)
-			if (seg instanceof SegGap) {
-				if (i==c.length-1)
-					continue outer
-				print(c)
-				throw new Error('gap in middle of contour')
-			} else if (seg instanceof SegL) {
-				if (prev && pos.x==prev.x)
-					out += F` v${pos.y-prev.y}`
-				else if (prev && pos.y==prev.y)
-					out += F` h${pos.x-prev.x}`
-				else {
-					out += F` l ${pos.fmt(prev)}`
+	let prev = this[0]
+	out += "M "+prev
+	for (let i=1; i<this.length; i+=2) {
+		let seg = this[i]
+		let short
+		if (seg instanceof SegC) {
+			let pp = this.get(i-1)
+			let pc = this[i-2] // do NOT use get()here, we need this to NOT wrap around
+			let d = seg.c1.Subtract(pp)
+			
+			if (pc instanceof SegC) {
+				let e = pp.Subtract(d).Subtract(pc.c2)
+				// todo: we should average the err between the prev and nex controlpoints
+				if (e.hypot() <= 0.001e5*10)
+					console.warn('S try', String(e))
+				if (e.hypot() <= 0.01e5 * 0) {
+					short = true
 				}
 			} else {
-				if (seg instanceof SegA) {
-					out += F` a ${seg.radius} ${seg.angle} ${seg.large?"1":"0"}${seg.sweep?"1":"0"}`
-				} else if (seg instanceof SegC) {
-					if (short)
-						out += ` s ${seg.c2.fmt(prev)}`
-					else
-						out += ` c ${seg.c1.fmt(prev)} ${seg.c2.fmt(prev)}`
-				} else if (seg instanceof SegQ) {
-					if (short)
-						out += " t"
-					else
-						out += ` q ${seg.c.fmt(prev)}`
-				}
-				out += " " + pos.fmt(prev)
+				if (d.x==0 && d.y==0)
+					short = true
 			}
-			prev = pos
+		} else if (seg instanceof SegQ) {
+			let pp = this.get(i-1)
+			let pc = this[i-2]
+			let d = seg.this.Subtract(pp)
+			
+			if (pc instanceof SegQ) {
+				let e = pp.Subtract(d).Subtract(pc.c)
+				// todo: we should average the err between the prev and nex controlpoints
+				if (e.hypot() <= 100000*0)
+					short = true
+			} else {
+				if (d.x==0 && d.y==0)
+					short = true
+			}
 		}
-		out += " Z"
+		let pos = this.get(i+1)
+		if (seg instanceof SegGap) {
+			if (i==this.length-1)
+				return out
+			print(this)
+			throw new Error('gap in middle of contour')
+		}
+		out += " "
+		if (seg instanceof SegL) {
+			if (prev && pos.x==prev.x)
+				out += F`v${pos.y-prev.y}`
+			else if (prev && pos.y==prev.y)
+				out += F`h${pos.x-prev.x}`
+			else
+				out += F`l ${pos.fmt(prev)}`
+		} else {
+			if (seg instanceof SegA) {
+				out += F`a ${seg.fmt1()}`
+			} else if (seg instanceof SegC) {
+				if (short)
+					out += `s ${seg.c2.fmt(prev)}`
+				else
+					out += `c ${seg.c1.fmt(prev)} ${seg.c2.fmt(prev)}`
+			} else if (seg instanceof SegQ) {
+				if (short)
+					out += "t"
+				else
+					out += `q ${seg.c.fmt(prev)}`
+			}
+			out += " " + pos.fmt(prev)
+		}
+		prev = pos
 	}
+	out += " Z"
 	return out
 }
 
-function unparse_abs(contours) {
+Contour.prototype.unparse_abs = function() {
+	rotate_to_gap(this)
+	
+	let prev = this[0]
 	let out = ""
-	outer: for (let c of contours) {
-		rotate_to_gap(c)
-		
-		//console.warn('m', c.length)
-		let prev = c[0]
-		out += " M\n"+prev.fmt()
-		for (let i=1; i<c.length; i+=2) {
-			let seg = c[i]
-			//let [cmd, ...args] = c[i]
-			/*if (cmd=='L' && i==c.length-1) {
-				out += "Z"
-				break
-				}*/
-			if (seg instanceof SegC)
-				out += "\n C "+seg.c1.fmt()+" "+seg.c2.fmt()
-			else if (seg instanceof SegQ)
-				out += "\n Q "+seg.c.fmt()
-			else if (seg instanceof SegL)
-				out += "\n L"
-			else if (seg instanceof SegA)
-				out += "\n A " + seg.radius.fmt() + " " + fmt(seg.angle) + " " + (seg.large ? "1" : "0") + (seg.sweep ? "1" : "0")
-			else if (seg instanceof SegGap) {
-				if (i==c.length-1) {
-					out += "\n"
-					continue outer
-				}
-				print(c)
-				throw new Error('gap in middle of contour')
-			} else {
-				console.error(seg)
-				throw new Error('what the heck is this segment? '+String(seg))
+	out += " M\n"+prev.fmt()
+	for (let i=1; i<this.length; i+=2) {
+		let seg = this[i]
+		if (seg instanceof SegGap) {
+			if (i==this.length-1) {
+				out += "\n"
+				return out
 			}
-			let pos = c.get(i+1)
-			out += "\n"+pos.fmt()
-			prev = pos
+			print(this)
+			throw new Error('gap in middle of contour')
 		}
-		out += "\n Z"
+		out += "\n "
+		if (seg instanceof SegC)
+			out += "C "+seg.c1.fmt()+" "+seg.c2.fmt()
+		else if (seg instanceof SegQ)
+			out += "Q "+seg.c.fmt()
+		else if (seg instanceof SegL)
+			out += "L"
+		else if (seg instanceof SegA)
+			out += "A " + seg.fmt1()
+		else {
+			console.error(seg)
+			throw new Error('what the heck is this segment? '+String(seg))
+		}
+		let pos = this.get(i+1)
+		out += "\n"+pos.fmt()
+		prev = pos
 	}
+	out += "\n Z"
 	return out
 }
 
@@ -1089,13 +1093,18 @@ function rotate(list, amount) {
 
 function findscale(c1, c2) {
 	let scales = []
+	let o1 = c1[0]
+	let o2 = c2[0]
 	function compare(p1, p2) {
+		p1 = p1.Subtract(o1)
+		p2 = p2.Subtract(o2)
 		let x2 = (p2.x)
 		let x1 = (p1.x)
 		let y2 = (p2.y)
 		let y1 = (p1.y)
 		let size = Math.hypot(x1,x2)
-		//if (size > 1000000)
+		if (Math.max(Math.abs(x1),Math.abs(y1))<2e5) // ignore points close together (ie close to origin on either axis)
+			return
 		print(x2/x1,y2/y1)
 		scales.push([size, new Point(x2/x1,y2/y1)])
 	}
@@ -1239,13 +1248,39 @@ function see_ellipse(c) {
 		rads.reverse()
 		aang += 90
 	}
+	/*if (aang<0.02) {
+		console.warn('angle snap to 0', aang)
+		aang=0
+	}*/
 	if (aang)
 		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"/>`)
 	else
-		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()})"/>`)
+		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" cx="${fmt(avg.x)}" cy="${fmt(avg.y)}"/>`)
 }
 	//*/
 
+
+function adjcp(c, i) { // adjacent control points
+	let prev = c.get(i-1)
+	let next = c.get(i+1)
+	return [prev.c2 || null, next.c1 || null]
+}
+
+
+
+function circle_from_3_points(o, p, q) {
+	q = q.Subtract(o)
+	p = p.Subtract(o)
+	let q2 = q.x**2 + q.y**2
+	let p2 = p.x**2 + p.y**2
+	
+	let d = 2 * (p.x * q.y - q.x * p.y)
+	let c = new Point(p2 * q.y - q2 * p.y, q2 * p.x - p2 * q.x).Divide(d)
+	
+	let rad = c.hypot()
+	c = c.Add(o)
+	return [c,rad]
+}
 
 
 
@@ -1341,8 +1376,8 @@ class Root extends Element {
 }
 
 /*
-let sz = make_star(14.21444e5-1.66666e5, 11.92836e5-2e5, 12)
-console.log(unparse_rel([sz]))
+let sz = make_star(0, 7.815075e5, 5)
+console.log(sz.unparse_rel())
 //*/
 
 let OPT = {__proto__:null}
@@ -1362,7 +1397,7 @@ while (args.length) {
 				let dist = (s[2]+s[3])/2
 				let path = new Contour([s[0], new SegL(), s[1], new SegGap()])
 				let elem = new Element('path')
-				elem.attrs.d = unparse_rel([path])
+				elem.attrs.d = path.unparse_rel()
 				console.warn('width: '+dist.fmt())
 				/*elem.attrs['stroke-width'] = dist.fmt()
 				elem.attrs['stroke-linecap'] = 'round'
@@ -1467,6 +1502,8 @@ let BAD_COLORS = {
 	'#bdddf4': '#bbddf5',
 }
 
+let prevv = []
+
 let root = parse_xml(xml, tag=>{
 	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
 		delete tag.attrs.id
@@ -1554,7 +1591,7 @@ let root = parse_xml(xml, tag=>{
 					c.transform({xx:1,yy:-1,xy:0,yx:0,x:0,y:36e5}); 
 				if (x||y)
 					c.transform(Matrix.Translate(x,y))
-				d += unparse_rel([c])
+				d += c.unparse_rel()
 			}
 			delete tfa.transform
 		} else {
@@ -1585,11 +1622,18 @@ let root = parse_xml(xml, tag=>{
 					let orient = contour_orientation(c)
 					print('PATH!','len '+c.length+', 🔃 '+orient)
 					
-					//console.warn(orient, unparse_rel([c]))
 					if (first ? (orient < 0) : (orient > 0)) {
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
 				}
+				
+				/*for (let i=0;i<c.length;i+=2) {
+					let p = c.get(i)
+					let [cp,cn] = adjcp(c, i)
+					cp = cp?.Subtract(p)
+					cn = cn?.Subtract(p)
+					print(cp && '['+cp.fmt()+']'+cp.hypot().fmt(), '×——('+p.fmt()+')——×', cn && "["+cn.fmt()+"]"+cn.hypot().fmt())
+				}*/
 				
 				/*
 				for (let i=0;i<c.length;i+=2) {
@@ -1609,18 +1653,26 @@ let root = parse_xml(xml, tag=>{
 					let diff = c.get(i).Subtract(c.get(i))
 				}
 				//*/
-				//c.transform(Matrix.Translate(-0.00141e5,0))
 				
-				//Matrix.transRot(c, new Point(3.854e5, 32.146e5), -45)
-				//c.transform(Matrix.Translate(0,15e5))				
+				//c.transform({xx:0,yy:0,xy:-1,yx:1,__proto__:Matrix.prototype})
+				//	console.log(prevv.length)
+				//Matrix.transRot(c, new Point(0,0), 30)
+				//c.transform(Matrix.Scale(2/2.1195))
+				//Matrix.transRot(c, new Point(18e5,18e5), 45)
+				//Matrix.transRot(c, new Point(5.3438e5,1.8291e5), 20)
 				/*c.transform(Matrix.Scale(0.647867,0.851167))*/
+				//c.transform(Matrix.Translate(-0.5e5,-1e5+0.5480e5));c.transform(Matrix.Scale(36/35))
 				
-				//c.transform(Matrix.Scale(0.93194))
+				//c.transform(Matrix.Rotate(50.6))
+				//c.transform(Matrix.Scale(9/2.5/2))
+				//c.transform({xx:0,xy:1,yx:1,yy:0,__proto__:Matrix.prototype})
 				
-				//c.transform(Matrix.Rotate(30.578))
+				//c.transform(Matrix.Translate(-17.9962e5,-18.00365e5,-18e5))
+				//c.transform(Matrix.Rotate(50.6))
+				//c.transform(Matrix.Scale(1.955))
+
 				
-				
-				//*
+				/*
 				let avg = new Point(0,0)
 				let avgc = 0
 				for (let i=0; i<c.length; i+=2) {
@@ -1631,6 +1683,10 @@ let root = parse_xml(xml, tag=>{
 				//avg = avg.Subtract(new Point(18e5,18e5))
 				//avg.transform(Matrix.Rotate(45))
 				console.warn('average point:', avg.fmt())
+				for (let i=0; i<c.length; i+=2) {
+					let diff = c[i].Subtract(avg)
+					console.warn(diff.hypot().fmt())
+				}
 				//*/
 				
 				/*for (let i=0; i<c.length; i++) {
@@ -1647,10 +1703,9 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Translate(-36e5,0))
 				let m = Matrix.Rotate(-45)
 				c.transform(m)*/
-			//	c.transform(Matrix.Scale(19/21.42463))
-				//
-				
-				//*//measure angles
+				//c.transform(Matrix.Scale(14/11.4115))
+				//c.transform(Matrix.Scale(-1,1))
+				/*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
 					if (a<0)
@@ -1662,7 +1717,7 @@ let root = parse_xml(xml, tag=>{
 				}
 				both: for (let i=0;i<c.length;i+=2) {
 					let seg = c.get(i+1)
-					if (0 && seg instanceof SegC) {
+					if (seg instanceof SegC) {
 						p_angle(seg.c1.Subtract(c.get(i)))
 						p_angle(seg.c2.Subtract(c.get(i+2)))
 					}
@@ -1683,9 +1738,17 @@ let root = parse_xml(xml, tag=>{
 					}
 				}//*/
 				
-				/*c.transform(Matrix.Translate(-8.3805e5,-18.292e5))
-				c.transform(Matrix.Rotate(6.511))
-				c.transform(Matrix.Scale(26/27.161))*/
+				/*for (let i=0; i<c.length; i+=2) {
+					if (c.get(i+1) instanceof SegC) {
+						let p1 = c.get(i)
+						let p2 = c.get(i+2)
+						let p3 = c.get(i+4)
+						print(circle_from_3_points(p1, p2, p3).map(x=>x.fmt()))
+						i += 3*2
+						i -= 2
+					}
+				}*/
+				
 				/*
 				for (let i=0;i<c.length;i+=2) {
 					let p = c[i]
@@ -1767,12 +1830,27 @@ let h = c[4].Subtract(c[0])
 					}
 				}
 					
-				if (OPT.abs)
-					d += unparse_abs([c])
-				else
-					d += unparse_rel([c])
+				/*
+				let vv=1
+				if (prevv.length < vv)
+					prevv.push(c)
+				else {
+					let nl = prevv.length-vv
+					console.warn(nl)
+					let c2 = prevv[nl]
+					for (let i=0; i<c.length; i++) {
+						console.warn(c[i], c2[i])
+						c[i] = c[i].Middle(c2[i])
+					}
+					prevv.push(null)
+				}//*/
+				//c.transform(Matrix.Scale(1,-1))
+				prevv.push(c)
+				
+				d += OPT.abs ? c.unparse_abs() : c.unparse_rel()
 				// TODO! we need to round the absolute coordinates BEFORE converting to relative, not after!!
 				first = 0
+				
 			}
 			/*/
 			let c1 = cc[0]
@@ -1809,7 +1887,7 @@ let h = c[4].Subtract(c[0])
 			//avg = avg.Subtract(new Point(18e5,18e5))
 			//avg.transform(Matrix.Rotate(45))
 			}
-			d = unparse_abs([c1])//*/
+			d = c1.unparse(true)//*/
 		}
 		tag.attrs.d = d
 	}
@@ -1817,6 +1895,27 @@ let h = c[4].Subtract(c[0])
 //angles = angles.filter(x=>x<1)
 //angles.sort((a,b)=>b-a)
 //let avga = angles.reduce((a,x)=>a+x,0)/angles.length
+
+/*console.log(
+	findscale(prevv[0], prevv[1]),
+	findscale(prevv[1], prevv[2]),
+	findscale(prevv[0], prevv[2]),
+)*/
+
+/*for (let c of prevv) {
+	c.transform(Matrix.Translate(-c[0].x, -c[0].y))
+}
+
+let c1 = prevv[0]
+for (let i=0; i<c1.length; i+=2) {
+	for (let c of prevv) {
+		let seg = c.get(i+1)
+		let seg1 = c1.get(i+1)
+		print('divP',i,c[i].Divide2(c1[i]))
+		print('divA',i,seg.c1.Divide2(seg1.c1))
+		print('divB',i,seg.c2.Divide2(seg1.c2))
+	}
+}*/
 
 if (OPT.unflip) {
 	function cleanup(node) {
