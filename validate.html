@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset=utf-8>
+
+<style>
+	@font-face {
+		font-family: 'Twemoji';
+		src: url("./build/TwemojiCOLR.otf?123") format('opentype');
+		font-display: block;
+		font-weight: bold; font-weight: 100 900;
+	}
+</style>
+<img id=$img>
+<canvas id=$canvas></canvas>
+
+<script>
+	async function get_svg_image(src) {
+		let x = new Image()
+		x.src = src
+		await x.decode()
+		return x
+	}
+	function load(file, a=false) {
+		console.warn('loading', file)
+		let x = new XMLHttpRequest()
+		x.open('GET', file, a)
+		x.send()
+		if (!a)
+			return x.responseXML
+		return new Promise((y,n)=>{
+			x.onload = function(ev) { y(this.responseXML) }
+			x.onerror = function(ev) { n(x) }
+		})
+	}
+	
+	async function compare(glyph, size) {
+		$canvas.width = (size+2)*2
+		$canvas.height = size+2
+		let c2d = $canvas.getContext('2d')
+		{
+			c2d.fillStyle = "#FF00FF"
+			c2d.fillRect(1,1,size,size)
+			c2d.fillStyle = "black"
+			let ppem = size/1.125
+			c2d.font = `${ppem}px Twemoji`
+			c2d.fillText("☺️", -(ppem*1/32)+1, (ppem*30/32)+1)
+		}
+		let svg = load('./twemoji/assets/svg/263a.svg')
+		svg.documentElement.setAttribute('width', size)
+		svg.documentElement.setAttribute('height', size)
+		let rect = svg.createElementNS("http://www.w3.org/2000/svg",'rect')
+		rect.setAttribute('fill', "#FF00FF")
+		rect.setAttribute('width', "36")
+		rect.setAttribute('height', "36")
+		svg.documentElement.prepend(rect)
+		$img.src = 'data:image/svg+xml;base64,'+btoa(svg.documentElement.outerHTML)
+		$img.onload = ()=>{
+			c2d.globalCompositeOperation = "difference"
+			c2d.drawImage($img,1, 1, size, size)
+		}
+	}
+	compare(0, 72)
+</script>
