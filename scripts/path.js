@@ -80,7 +80,7 @@ class Matrix {
 			a = -a, flipsin = true
 		a = a % 360
 		if (a >= 180)
-			a -= 180, flipsin = flipcos = true
+			a -= 180, flipsin = !flipsin, flipcos = true
 		
 		let cos, sin
 		if (a==45) {
