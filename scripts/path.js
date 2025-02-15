@@ -17,7 +17,7 @@ function fmt(num) {
 }
 function pnum(ns) {
 	let n = Number(ns+"e5")
-	if (n != (n|0)) {//if (isNaN(n))
+	if (0 && n != (n|0)) {//if (isNaN(n))
 		// this weird special case is because, for some reason the older svgs use 10e-4 instead of 0.001 sometimes (and no other e notation values)
 		if (ns=='10e-4') return pnum('0.001')
 		if (ns=='-10e-4') return pnum('-0.001')
@@ -132,10 +132,16 @@ class Matrix {
 	}
 	scale(x, y) {
 		
-	}
-	matrix(a, b, c, d, e, f) {
-		
 	}*/
+	matrix(a, b, c, d, e, f) {
+		console.warn('mtx!!!')
+		this.xx = a/1e5
+		this.yy = d/1e5
+		this.yx = b/1e5
+		this.xy = c/1e5
+		this.x = e
+		this.y = f
+	}
 	static *parse_trans(str) {
 		for (let [match,fname,args] of str.matchAll(/(?:^\s*)?(\w+)\s*[(]([^)]*)[)](?:[,\s]+(?!$)|\s*$)|[^]+/g)) {
 			if (!fname)
@@ -371,6 +377,8 @@ class SegA extends Seg {
 			0,[x,y] = [y,x]
 			flip = true
 		}
+		if ((xx<0) != (yy<0))
+			flip = true
 		if (xx!=1 || yy!=1 || flip) {
 			if (this.angle==0 || x==y) {
 				this.radius.x = x * xx
@@ -770,6 +778,87 @@ function check(c) {
 			i -= 2
 		}
 	}
+}
+
+function circle_to_contour(elem) {
+	let x = pnum(elem.attrs.cx||"0")
+	let y = pnum(elem.attrs.cy||"0")
+	let rx = pnum(elem.attrs.r||"0")
+	let ry = rx
+	let c = new Contour([
+		new Point(x-rx,y),
+		new SegA(new Point(rx,ry)),
+		new Point(x+rx,y),
+		new SegA(new Point(rx,ry)),
+	])
+	return c
+}
+
+function rect_to_contour(elem) {
+	//let {x=0,y=0,width=0,height=0,rx=0,ry=rx} = elem.attrs
+	let x = pnum(elem.attrs.x||"0")
+	let y = pnum(elem.attrs.y||"0")
+	let width = pnum(elem.attrs.width||"0")
+	let height = pnum(elem.attrs.height||"0")
+	let rx = pnum(elem.attrs.rx||"0")
+	let ry = pnum(elem.attrs.ry||elem.attrs.rx||"0")
+	let c
+	if (rx==0 && ry==0)
+		c = new Contour([
+			new Point(x,y),
+			new SegL(),
+			new Point(x+width,y),
+			new SegL(),
+			new Point(x+width,y+height),
+			new SegL(),
+			new Point(x,y+height),
+			new SegL(),
+		])
+	else if (height==ry*2) {
+		c = new Contour([
+			new Point(x+rx,y),
+			new SegL(),
+			new Point(x+width-rx,y),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width-rx,y+height),
+			new SegL(),
+			new Point(x+rx,y+height),
+			new SegA(new Point(rx,ry)),
+		])
+	} else if (width==rx*2) {
+		c = new Contour([
+			new Point(x,y+ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width,y+ry),
+			new SegL(),
+			new Point(x+width,y+height-ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x,y+height-ry),
+			new SegL(),
+		])
+	} else {
+		// todo: handle pill shapes as special case? (width=rx*2 or height=ry*2)
+		c = new Contour([
+			new Point(x,y+ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+rx,y),
+			new SegL(),
+			new Point(x+width-rx,y),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width,y+ry),
+			new SegL(),
+			new Point(x+width,y+height-ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width-rx,y+height),
+			new SegL(),
+			new Point(x+rx,y+height),
+			new SegA(new Point(rx,ry)),
+			new Point(x,y+height-ry),
+			new SegL(),
+		])
+		//[radius,angle=0,large=false,sweep=true
+	}
+	return c
 }
 
 function dist(p1, p2) {
@@ -1324,6 +1413,10 @@ let commands = []
 while (args.length) {
 	let cmd = args.shift()
 	if (cmd=='rot') {
+		// todo: i want more commands like
+		// - rotate until we start on a point with a certain x or y coordinate
+		// - add a gap covering tab at some position based on describing features like "the longest horizontal edge" or "the left side" or something
+		//  - hmm yea like general ways of detecting features based on text descriptions
 		let amt = +args.shift()
 		commands.push(c=>{rotate(c,amt*2)})
 	}
@@ -1382,6 +1475,10 @@ while (args.length) {
 		})
 	} else if (cmd=='corner-arcs') {
 		commands.push(c=>{replace_corner_arcs(c)})
+	} else if (cmd=='ffexp') {
+		commands.push(c=>{c.transform({xx:1/100,yy:-1/100,xy:0,yx:0,x:0,y:0})})
+	} else if (cmd=='unrect') {
+		OPT.unrect = true
 	} else {
 		throw new Error('unknown command: '+cmd)
 	}
@@ -1435,12 +1532,43 @@ let root = parse_xml(xml, tag=>{
 		tag.attrs.cy = p.y.fmt()
 	}*/
 	if (tag.name=='circle') {
-		tag.attrs.cx = 36-tag.attrs.cx
+		/*let cx = pnum(tag.attrs.cx || "0")
+		let cy = pnum(tag.attrs.cy || "0")
+		x = new Point(cx,cy)*/
+		//tag.attrs.cx = 36-tag.attrs.cx
+	}
+	if (OPT.unrect) {
+		if (tag.name=='rect') {
+			let c = rect_to_contour(tag)
+			delete tag.attrs.x
+			delete tag.attrs.y
+			delete tag.attrs.width
+			delete tag.attrs.height
+			delete tag.attrs.rx
+			delete tag.attrs.ry
+			tag.name = 'path'
+			tag.attrs.d = unparse_abs([c])
+		} else if (tag.name=='circle') {
+			let c = circle_to_contour(tag)
+			delete tag.attrs.cx
+			delete tag.attrs.cy
+			delete tag.attrs.r
+			tag.name = 'path'
+			tag.attrs.d = unparse_abs([c])
+		}
 	}
 	if (tag.name=='path') {
 		let d = tag.attrs.d
 		let cc = parse(d, !fc)
 		d = ""
+		
+		/*if (tag.attrs.transform) {
+			let x = Matrix.SvgAttr(tag.attrs.transform)
+			for (let c of cc) {
+				c.transform(x)
+			}
+			delete tag.attrs.transform
+		}*/
 		if (OPT.unflip) {
 			let x=0,y=0
 			let tfa = OPT.unflip==3 ? tag.attrs : tag.parentNode.attrs
@@ -1486,17 +1614,16 @@ let root = parse_xml(xml, tag=>{
 			}
 			cc.push(c3)//*/
 			for (let c of cc) {
-				for (let i=0; i<c.length-2; i+=2) {
-					if (c[i].equal(c[i+2])) {
-						console.warn("🔩 zero length segment: ", c[i+1])
+				for (let i=0; i<c.length; i+=2) {
+					if (c.get(i).equal(c.get(i+2))) {
+						console.warn("🔩 zero length segment: ", c.get(i+1))
 						c.splice(i, 2)
 						i-=2
 					}
 				}
 				if (OPT.split)
 					first = true
-				
-				c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+				//c.transform({xx:1/100,yy:-1/100,xy:0,yx:0,x:0,y:0}); 
 				
 				if (!c.some(x=>x instanceof SegGap)) {
 					let orient = contour_orientation(c)
@@ -1555,6 +1682,9 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Rotate(-45))
 				c.transform(Matrix.Scale(0.647867,0.851167))
 				/*c.transform(Matrix.Translate(-0.09549e5,0))*/
+				c.transform(Matrix.Translate(-18e5,-18e5))
+				c.transform(Matrix.Rotate(-90*3)) //oh shit why is this broken
+				c.transform(Matrix.Translate(18e5,18e5))
 				/*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
@@ -1593,12 +1723,19 @@ let root = parse_xml(xml, tag=>{
 				}
 				//transform(c, Matrix.Translate(-0.36018e5, -0.15266e5))
 				//*/
-				
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
 				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:0})
 /*				c.transform(Matrix.Scale(1, 1.729))
 				c.transform(Matrix.Rotate(45))*/
 				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
+				
+			/*	c.transform(Matrix.Translate(-1e5,-13.5e5))
+				c.transform(Matrix.Scale(36/(35.868-1)))
+				c.transform(Matrix.Translate(0e5,12.15e5))*/
+				//c.transform(Matrix.Scale(-1,1))
+				//c.transform({xx:1,yy:1,xy:0.2679491921104953,yx:0,x:0,y:0})
+				//c.transform(Matrix.Translate(0e5,4.392e5))
 				
 /*				c.splice(0, 2)
 				let nw=new Contour()
@@ -1647,12 +1784,12 @@ let h = c[4].Subtract(c[0])
 				//merge_lines(c)
 				//transform(c, Matrix.Scale(-1,1))
 				//transform(c, Matrix.Translate(-36e5,0))
-				//c.round(100)
-				
 				//check(c)
 				
 				for (let cmd of commands)
 					cmd(c, tag)
+				
+				c.round(1)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
