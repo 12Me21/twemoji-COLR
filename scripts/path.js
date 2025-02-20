@@ -252,6 +252,9 @@ class SegL extends Seg {
 	Middle() {
 		return new SegL()
 	}
+	Copy() {
+		return new SegL()
+	}
 }
 SegL.prototype.letter = "l"
 
@@ -265,6 +268,9 @@ class SegGap extends Seg {
 	round() {
 	}
 	Middle() {
+		return new SegGap()
+	}
+	Copy() {
 		return new SegGap()
 	}
 }
@@ -307,6 +313,9 @@ class SegC extends Seg {
 	}
 	Middle(seg) {
 		return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
+	}
+	Copy() {
+		return new SegC(this.c1.Copy(), this.c2.Copy())
 	}
 }
 SegC.prototype.letter = "c"
@@ -417,6 +426,11 @@ class Contour extends Array {
 		// todo: what if matrix was just stored like [scale, skew, translate]. i.e. {xx,yy}, {yx,xy}, {wx,wy}. as 3 Points
 		for (let x of this)
 			x.transform(matrix)
+	}
+	Copy() {
+		// unfinished
+		print("WARNING: contour copy is unfinished")
+		return this.map(x=>x.Copy())
 	}
 }
 
@@ -1682,9 +1696,9 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Rotate(-45))
 				c.transform(Matrix.Scale(0.647867,0.851167))
 				/*c.transform(Matrix.Translate(-0.09549e5,0))*/
-				c.transform(Matrix.Translate(-18e5,-18e5))
-				c.transform(Matrix.Rotate(-90*3)) //oh shit why is this broken
-				c.transform(Matrix.Translate(18e5,18e5))
+				/*c.transform(Matrix.Translate(-18e5,-18e5))
+				c.transform(Matrix.Rotate(-90*3))
+				c.transform(Matrix.Translate(18e5,18e5))*/
 				/*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
@@ -1729,6 +1743,7 @@ let root = parse_xml(xml, tag=>{
 				c.transform(Matrix.Rotate(45))*/
 				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0}); 
 				
 			/*	c.transform(Matrix.Translate(-1e5,-13.5e5))
 				c.transform(Matrix.Scale(36/(35.868-1)))
@@ -1768,6 +1783,42 @@ let root = parse_xml(xml, tag=>{
 				console.warn(lens.join("\n"))*/
 				
 				/*
+				  add indents to every other segment, where the indent point is located on the perpendicular bisector at half the distance inwards
+				  let full = new Contour()
+				for (let i=0; i<c.length; i+=4) {
+					let a = c.get(i)
+					let b = c.get(i+2)
+					let next = c.get(i+4)
+					let spike1 = next.Subtract(b).Divide(2)
+					let spike2 = b.Add(spike1)
+					spike1.transform(Matrix.Rotate(90))
+					spike2.add(spike1)
+					full.push(a, c.get(i+1), b, new SegL(), spike2, new SegL())
+				}
+				c = full*/
+				/*
+				// make the stripes
+				let full = new Contour()
+				for (let i=2; i<c.length; i+=4) {
+					let part = new Contour([
+						c.get(i),
+						c.get(i+1),
+						c.get(i+2),
+						new SegL(),
+					])
+					let part2 = part.Copy()
+					part2.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+					rev1(part2)
+					rotate(part2, 2)
+					part.push(...part2)
+					console.log(unparse_rel([part]))
+				}
+				//c = full*/
+
+				
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+				
+				/*
 chips
 let h = c[4].Subtract(c[0])
 				let v = c[6].Subtract(c[2])
@@ -1789,7 +1840,7 @@ let h = c[4].Subtract(c[0])
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				c.round(1)
+				c.round(10)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
