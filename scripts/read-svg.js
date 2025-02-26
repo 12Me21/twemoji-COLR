@@ -70,6 +70,31 @@ const fix_colors = {
 	"#E0E7EC":"#E1E8ED",
 	"#929497":"#939598",
 	"#F1F1F1":"#F1F2F2",
+	"#E9EFF3":"#E9F0F4", //stadium
+	
+	"#F4F7F9":"#F5F8FA",
+	// new ones:
+	"#FFA800":"#FFAC33", // dubious
+	"#FC8A00":"#F4900C", // dubious
+	"#DFE7ED":"#E1E8ED",
+	"#282F33":"#292F33",
+	"#CAD4DB":"#CCD6DD",
+	// moose
+	"#6C1A0D":"#662113",
+	"#282F33":"#292F33",
+	"#262B2B":"#272B2B",
+	"#C86349":"#C1694F",
+	// peapod
+	"#4e932b":"#5C913B",
+	"#9bd57f":"#A6D388",
+	"#69b546":"#77B255",
+	// jar
+	"#f19020","#F4900C",
+	"#f9ca55","#FFCC4D",
+	// old, not sure:
+	"#4B545D":"#485359", // the 'incorrect' one is more common, but the emojis it appears in tend to have other wrong colors
+	
+	"#1C6399":"#226699", // XRay (dubious whether this was intended, but its very close so ehh)
 }
 
 class Shape {
