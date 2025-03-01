@@ -4,6 +4,8 @@
 
 // also we can store arbitrary shapes as contours by storing them as segment types (and then the previous point determines the location
 
+// todo: store whether a contour is clockwise or counterclockwise and preserve that? and another state for unknown
+
 let print = console.warn
 print() 
 
@@ -17,7 +19,7 @@ function fmt(num) {
 }
 function pnum(ns) {
 	let n = Number(ns+"e5")
-	if (0 && n != (n|0)) {//if (isNaN(n))
+	if (n != (n|0)) {//if (isNaN(n))
 		// this weird special case is because, for some reason the older svgs use 10e-4 instead of 0.001 sometimes (and no other e notation values)
 		if (ns=='10e-4') return pnum('0.001')
 		if (ns=='-10e-4') return pnum('-0.001')
@@ -1124,27 +1126,22 @@ function toHex() {
 	
 }
 
-/*function balance_cubic(c, i) {
+function balance_cubic(c, i) {
 	let s1 = c.get(i-1)
 	let s2 = c.get(i+1)
+	if (s1 instanceof SegC && s2 instanceof SegC) ; else return
 	let p = c.get(i)
-	let center = new Point(0, 0)
-	console.log(s1,s2,p)
-	center.add(s1.c2)
-	center.add(p)
-	center.add(s2.c1)
-	center = center.Divide(3)
-	center.round(0.001e5)
-	
-	let vec1 = center.Subtract(s1.c2)
-	let vec2 = s2.c1.Subtract(center)
-	vec1.add(vec2)
-	let vec = vec1.Divide(2)
-	vec.round(0.001e5)
-	c[i] = center
-	s1.c2 = center.Subtract(vec)
-	s2.c1 = center.Add(vec)
-}*/
+	let d1 = s1.c2.Subtract(p)
+	let d2 = p.Subtract(s2.c1)
+	let err = d1.dist(d2)
+	if (err>=0.01e5)
+		return
+	print("BALANCING ⚖ CUBIC ", err.fmt())
+	let delta = s2.c1.Subtract(s1.c2).Divide(2)
+	delta.round(0.001e5)
+	s1.c2 = p.Subtract(delta)
+	s2.c1 = p.Add(delta)
+}
 
 function rotate(list, amount) {
 	amount %= list.length
@@ -1466,6 +1463,9 @@ while (args.length) {
 	else if (cmd=='rev') {
 		commands.push(c=>{rev1(c)})
 	}
+	else if (cmd=='hflip') {
+		commands.push(c=>{c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})})
+	}
 	else if (cmd=='see-ellipse') {
 		commands.push(c=>{see_ellipse(c)})
 	}
@@ -1493,6 +1493,12 @@ while (args.length) {
 		commands.push(c=>{c.transform({xx:1/100,yy:-1/100,xy:0,yx:0,x:0,y:0})})
 	} else if (cmd=='unrect') {
 		OPT.unrect = true
+	} else if (cmd=='balance') {
+		commands.push(c=>{
+			for (let i=0; i<c.length; i+=2) {
+				balance_cubic(c, i)
+			}
+		})	
 	} else {
 		throw new Error('unknown command: '+cmd)
 	}
@@ -1553,6 +1559,7 @@ let root = parse_xml(xml, tag=>{
 	}
 	if (OPT.unrect) {
 		if (tag.name=='rect') {
+			print('🪠 <rect> -> <path>')
 			let c = rect_to_contour(tag)
 			delete tag.attrs.x
 			delete tag.attrs.y
@@ -1563,6 +1570,7 @@ let root = parse_xml(xml, tag=>{
 			tag.name = 'path'
 			tag.attrs.d = unparse_abs([c])
 		} else if (tag.name=='circle') {
+			print('🪠 <circle> -> <path>')
 			let c = circle_to_contour(tag)
 			delete tag.attrs.cx
 			delete tag.attrs.cy
@@ -1630,9 +1638,12 @@ let root = parse_xml(xml, tag=>{
 			for (let c of cc) {
 				for (let i=0; i<c.length; i+=2) {
 					if (c.get(i).equal(c.get(i+2))) {
-						console.warn("🔩 zero length segment: ", c.get(i+1))
-						c.splice(i, 2)
-						i-=2
+						let zero = c.get(i+1)
+						if (!(zero instanceof SegGap)) {
+							console.warn("🔩 zero length segment: ", zero)
+							c.splice(i, 2)
+							i-=2
+						}
 					}
 				}
 				if (OPT.split)
@@ -1645,6 +1656,8 @@ let root = parse_xml(xml, tag=>{
 					
 					//console.warn(orient, unparse_rel([c]))
 					
+					// todo: fix orientation detection for shapes with an arc near the top...
+					// e.g. <path d="M 15,7.5 v-1 a 2.5,2.5 0 00 -5,0 v1 a 2.5,2.5 0 01 2.5,-2.5 a 2.5,2.5 0 01 0.847,0.152 c 0.923,0.342 0.653,0.21 0.653,14.043 v0.305 h1 v-12 Z"/>
 					if (first ? (orient < 0) : (orient > 0)) {
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
@@ -1745,9 +1758,9 @@ let root = parse_xml(xml, tag=>{
 				//check(c)
 				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0}); 
 				
-			/*	c.transform(Matrix.Translate(-1e5,-13.5e5))
-				c.transform(Matrix.Scale(36/(35.868-1)))
-				c.transform(Matrix.Translate(0e5,12.15e5))*/
+//				c.transform(Matrix.Translate(-10.09e5,-33e5))
+//				c.transform(Matrix.Scale(1.3873125))
+//				c.transform(Matrix.Translate(9.859e5,33e5))
 				//c.transform(Matrix.Scale(-1,1))
 				//c.transform({xx:1,yy:1,xy:0.2679491921104953,yx:0,x:0,y:0})
 				//c.transform(Matrix.Translate(0e5,4.392e5))
@@ -1783,19 +1796,19 @@ let root = parse_xml(xml, tag=>{
 				console.warn(lens.join("\n"))*/
 				
 				/*
-				  add indents to every other segment, where the indent point is located on the perpendicular bisector at half the distance inwards
-				  let full = new Contour()
+				// add indents to every other segment, where the indent point is located ~~on the perpendicular bisector at half the distance inwards~~ 1 unit left of the midpoint
+				let full = new Contour()
 				for (let i=0; i<c.length; i+=4) {
 					let a = c.get(i)
 					let b = c.get(i+2)
 					let next = c.get(i+4)
 					let spike1 = next.Subtract(b).Divide(2)
 					let spike2 = b.Add(spike1)
-					spike1.transform(Matrix.Rotate(90))
-					spike2.add(spike1)
+					//spike1.transform(Matrix.Rotate(90))
+					spike2.add({x:-1e5,y:0})
 					full.push(a, c.get(i+1), b, new SegL(), spike2, new SegL())
 				}
-				c = full*/
+				c = full//*/
 				/*
 				// make the stripes
 				let full = new Contour()
@@ -1815,8 +1828,13 @@ let root = parse_xml(xml, tag=>{
 				}
 				//c = full*/
 
-				
-				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36.133e5,y:-0.084e5})
+			//	c.transform({xx:-1,yy:1,xy:0,yx:0,x:0,y:0})
+			//	c.transform({xx:1,yy:1,xy:0,yx:0,x:10.09e5,y:0})
+//				c.transform(Matrix.Rotate(15))
+//				c.transform(Matrix.Translate(18e5,5e5))
+				//c.transform({xx:1,yy:-1,xy:0,yx:0,x:0,y:0})
+			//	c.transform({xx:1,yy:1,xy:0,yx:0,x:18e5,y:18e5})
 				
 				/*
 chips
@@ -1840,7 +1858,7 @@ let h = c[4].Subtract(c[0])
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				c.round(10)
+				c.round(100)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
