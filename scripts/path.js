@@ -1274,6 +1274,34 @@ function short_to_arcs(c, rad) {
 	}
 }
 
+// temp
+class Ellipse1 {
+	constructor(pos, radii, angle=0) {
+		this.pos = pos
+		this.r = radii
+		this.angle = angle
+	}
+	to_element() {
+		let elem
+		if (this.r.x==this.r.y) {
+			elem = new Element('circle')
+			elem.attrs.r = fmt(this.r.x)
+		} else {
+			elem = new Element('ellipse')
+			elem.attrs.rx = fmt(this.r.x)
+			elem.attrs.ry = fmt(this.r.y)
+		}
+		elem.empty = true
+		if (this.angle!=0)
+			elem.attrs.transform = `translate(${this.pos.fmt()}) rotate(${this.angle})`
+		else {
+			elem.attrs.cx = fmt(this.pos.x)
+			elem.attrs.cy = fmt(this.pos.y)
+		}
+		return elem
+	}
+}
+
 /* ellipsefinder */
 function see_ellipse(c) {
 	let avg = new Point(0,0)
@@ -1312,13 +1340,10 @@ function see_ellipse(c) {
 		rads.reverse()
 		aang += 90
 	}
-	if (aang)
-		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"/>`)
-	else
-		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()})"/>`)
+	let e = new Ellipse1(avg, new Point(rads[1],rads[0]), -aang)
+	print(e.to_element().toString())
 }
 	//*/
-
 
 
 
@@ -1514,6 +1539,7 @@ let defstyle = {
 }
 
 let angles = []
+let dists = []
 
 let root = parse_xml(xml, tag=>{
 	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
@@ -1681,6 +1707,8 @@ let root = parse_xml(xml, tag=>{
 					let diff = c.get(i).Subtract(c.get(i))
 				}
 				//*/
+				//c.transform(Matrix.Translate(-0.4277e5,-34.7441e5))
+				//c.transform(Matrix.Rotate(-45))
 				/*
 				let avg = new Point(0,0)
 				let avgc = 0
@@ -1689,10 +1717,10 @@ let root = parse_xml(xml, tag=>{
 					avgc++
 				}
 				avg = avg.Divide(avgc)
-				avg = avg.Subtract(new Point(18e5,18e5))
-				avg.transform(Matrix.Rotate(45))
+				//avg = avg.Subtract(new Point(18e5,18e5))
+				//avg.transform(Matrix.Rotate(45))
 				console.warn('average point:', avg.fmt())
-				*/
+				//*/
 				
 				/*for (let i=0; i<c.length; i++) {
 					let seg = c.get(i)
@@ -1712,33 +1740,34 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Translate(-18e5,-18e5))
 				c.transform(Matrix.Rotate(-90*3))
 				c.transform(Matrix.Translate(18e5,18e5))*/
-				/*//measure angles
+				//*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
-					if (a<0)
+					/*if (a<0)
 						a += 360
 					a = a % 90
 					if (a>45)
-						a = 90-a
-					console.warn(a)
+					a = 90-a*/
+					angles.push(a)
+					//console.warn(a)
 				}
 				for (let i=0;i<c.length;i+=2) {
 					let seg = c.get(i+1)
 					if (seg instanceof SegC) {
-						p_angle(seg.c1.Subtract(c.get(i)))
-						p_angle(seg.c2.Subtract(c.get(i+2)))
+						//p_angle(seg.c1.Subtract(c.get(i)))
+						//p_angle(seg.c2.Subtract(c.get(i+2)))
 					}
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
 						let diff = c.get(i).Subtract(c.get(j))
-						let y = 7/4.041*diff.y
+						/*let y = 7/4.041*diff.y
 						let ry = round(y, 1e5)
 						if (Math.abs(y-ry) < 0.1e5) {
 							console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
-						}
-						
+						}*/
+						dists.push(diff.hypot())
 						//console.warn('dist', diff.hypot().fmt())
-						continue
+						//continue
 						p_angle(diff)
 					}
 				}//*/
@@ -1758,7 +1787,8 @@ let root = parse_xml(xml, tag=>{
 				//check(c)
 				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0}); 
 				
-//				c.transform(Matrix.Translate(-10.09e5,-33e5))
+				//c.transform(Matrix.Rotate(28.06))
+//				c.transform(Matrix.Translate(33.006e5,34.256e5))
 //				c.transform(Matrix.Scale(1.3873125))
 //				c.transform(Matrix.Translate(9.859e5,33e5))
 				//c.transform(Matrix.Scale(-1,1))
@@ -1827,7 +1857,9 @@ let root = parse_xml(xml, tag=>{
 					console.log(unparse_rel([part]))
 				}
 				//c = full*/
-
+							
+				//c.transform(Matrix.Scale(1.0024))
+				//c.transform(Matrix.Rotate(-45))
 				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36.133e5,y:-0.084e5})
 			//	c.transform({xx:-1,yy:1,xy:0,yx:0,x:0,y:0})
 			//	c.transform({xx:1,yy:1,xy:0,yx:0,x:10.09e5,y:0})
@@ -1855,10 +1887,12 @@ let h = c[4].Subtract(c[0])
 				//transform(c, Matrix.Translate(-36e5,0))
 				//check(c)
 				
+				//c.transform(Matrix.Translate(17.994e5,15.847e5))
+				
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				c.round(100)
+				c.round(10)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
@@ -1883,6 +1917,21 @@ let h = c[4].Subtract(c[0])
 		tag.attrs.d = d
 	}
 })
+{
+	function adiff(a, b) {
+		return (a-b+360+180)%360-180
+	}
+	let avg = 0
+	let n = angles.length/2
+	for (let i=0; i<n; i++) {
+		let d = adiff(angles[i], angles[i+n])
+		console.warn(d)
+		avg += d
+	}
+	avg /= n
+	console.warn("AVG_ANGLE", avg)
+}
+
 //angles = angles.filter(x=>x<1)
 //angles.sort((a,b)=>b-a)
 //let avga = angles.reduce((a,x)=>a+x,0)/angles.length
