@@ -10,6 +10,8 @@
 		border: 1px solid gray;
 		padding: 0 1px;
 		border-radius: 1px;
+		white-space: break-spaces;
+		text-justify: none; /* not widely supported :( */
 	}
 	body {
 		-webkit-text-size-adjust: none;
@@ -35,7 +37,9 @@
 </style>
 
 <h1><i>Twemoji COLR</i></h1>
-
+<ul>
+	<li>now updated to <a href=https://www.unicode.org/emoji/charts-16.0/emoji-released.html><i>Unicode Emoji v<b>16.0</b></i></a>!
+</ul>
 <h2>Resources</h2>
 <p><a href=./demo.html>demo page</a>
 <p><a href=https://github.com/12Me21/twemoji-COLR.git>git repository</a>
@@ -46,7 +50,7 @@
 	<tr><td><a href=./build/TwemojiCOLR.otf>TwemojiCOLR.otf</a><td><i>OpenType</i>[<i>CFF</i>,<i>COLRv0</i>]<td><code>Twemoji COLR</code><td>996&hairsp;kB</tr>
 	<tr><td><a href=./build/TwemojiCOLR_renamed_AppleColorEmoji.otf>TwemojiCOLR_renamed_AppleColorEmoji.otf</a><td><i>OpenType</i>[<i>CFF</i>,<i>COLRv0</i>]<td><code>Apple Color Emoji</code><td>996&hairsp;kB</tr>
 </table>
-
+ 
 <h2>About Fonts</h2>
 <p><b>note:</b> when i say <q>font</q>, i technically mean <q>typeface</q>.&nbsp; (this distinction doesn't matter with emoji fonts anyway).
 <h3>Color Fonts</h3>
@@ -121,10 +125,10 @@ most things will either use the system emoji font, or they'll have a list of fon
 	<thead>
 		<tr><th>project<th>color format<th>emoji version<th>has black-and-white<br>fallback glyphs?</tr>
 	</thead>
-	<tr><th><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType-SVG<td>15.1 (2024)<td>yes</tr>
+	<tr><th><a href=https://github.com/13rac1/twemoji-color-font>13rac1/twemoji-color-font</a><td>OpenType-SVG<td bgcolor=lemonchiffon>15.1 (2024)<td>yes</tr>
 	<tr><th><a href=https://github.com/mozilla/twemoji-colr>mozilla/twemoji-colr</a><td>COLRv0<td bgcolor=pink>14.0 (2022)<td>no</tr>
-	<tr><th><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR</a><td>COLRv0<td>15.1 (2024)<td>no</tr>
-	<tr><th><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf</a><td>CBDT<td>15.1 (2024)<td>no</tr>
+	<tr><th><a href=https://github.com/12Me21/twemoji-COLR>12Me21/twemoji-COLR</a><td>COLRv0<td>16.0 (2025)<td>no</tr>
+	<tr><th><a href=https://git.sr.ht/~whynothugo/twemoji.ttf>whynothugo/twemoji.ttf</a><td>CBDT<td bgcolor=lemonchiffon>15.1 (2024)<td>no</tr>
 </table>
 
 <p>my font was designed to replace <i>Twemoji Mozilla</i>, which hasn't been updated in a while and has some broken dependencies.
