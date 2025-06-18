@@ -18,7 +18,7 @@ twemoji/assets/svg:
 	cd twemoji && git sparse-checkout init && git sparse-checkout set assets/svg && git checkout $(twemoji_commit)
 
 data/unicode-emoji-test.txt:
-	curl --compressed 'https://www.unicode.org/Public/emoji/15.1/emoji-test.txt' -o data/unicode-emoji-test.txt
+	curl --compressed 'https://www.unicode.org/Public/emoji/16.0/emoji-test.txt' -o data/unicode-emoji-test.txt
 
 data/emoji-test.txt: data/unicode-emoji-test.txt data/twemoji-nonstandard.sed
 	sed -f data/twemoji-nonstandard.sed <data/unicode-emoji-test.txt >data/emoji-test.txt

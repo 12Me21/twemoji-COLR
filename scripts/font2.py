@@ -22,7 +22,7 @@ f.fontname = FULLNAME.replace(" ", "")
 f.familyname = FULLNAME
 f.fullname = FULLNAME
 f.weight = "Regular"
-f.version = "15.150" # i'll just use the emoji version (15.1)
+f.version = "16.000" # based on the emoji version
 
 f.os2_vendor = "12;;"
 f.copyright = '(c) my balls'
