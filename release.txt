@@ -1,0 +1,29 @@
+in our twemoji fork:
+
+1: rebase:
+rebase branch `all` onto the newest jdecked main branch
+if any preexisting emojis were changed on their end, resolve these manually (if necessary)
+
+2: see if any new designs need fixing (if we have time)
+
+3: push
+
+in twemoji-COLR:
+
+1: if we have a new unicode emoji version:
+- in the Makefile, update the version number in the emoji-test.txt url (https://www.unicode.org/Public/emoji/<VER>/emoji-test.txt)
+- `rm data/unicode-emoji-test.txt`
+2: update the data folder:
+- `git pull -C twemoji`
+3: build font
+- `make`
+4: update the demo pages
+- `node ./scripts/postprocess-emoji-test.js >./data/edata.js` (for demo1.html)
+- update demo2.html (how?)
+- bump the anti-cache query string on the font urls
+5: publish files
+- uh i dont remember where i hosted them.. nekoweb? do we still want to use that? nnnot really but...
+- upload demo2.html as demo.html (also there are some other changes.. not sure what i did there)
+- upload the fonts (also go back and make the one with its name set to Apple Color Emoji lol)
+ - i think we have 4 files total (2 font names and a woff2 version of each)
+- update any necessary info in readme.html (file sizes, query string on the download urls, etc)
