@@ -85,16 +85,35 @@ const fix_colors = {
 	"#262B2B":"#272B2B",
 	"#C86349":"#C1694F",
 	// peapod
-	"#4e932b":"#5C913B",
-	"#9bd57f":"#A6D388",
-	"#69b546":"#77B255",
+	"#4E932B":"#5C913B",
+	"#9BD57F":"#A6D388",
+	"#69B546":"#77B255",
 	// jar
-	"#f19020","#F4900C",
-	"#f9ca55","#FFCC4D",
+	"#F19020":"#F4900C",
+	"#F9CA55":"#FFCC4D",
+	// wireless
+	"#2B87C7":"#3B88C3",
 	// old, not sure:
 	"#4B545D":"#485359", // the 'incorrect' one is more common, but the emojis it appears in tend to have other wrong colors
 	
-	"#1C6399":"#226699", // XRay (dubious whether this was intended, but its very close so ehh)
+	"#1C6399":"#226699", // XRay and others (dubious whether this was intended, but its very close so ehh)
+	
+	// Rainbow - the orange and purple are really far off.
+	// due to color-space conversion, probably.
+	"#EB2027":"#ED1C24",
+	//"#F19020":"#F4900C",
+	"#FFCB4C":"#FFCC4D",
+	"#5C903F":"#5C913B",
+	"#226798":"#226699",
+	//"#8767AC":"#9266CC",
+	
+	// Chains
+	"#C6D5DB":"#CCD6DD", // probably
+	
+	//face clouds
+	"#F3F7F9":"#F5F8FA",
+	"#C9D5DD":"#CCD6DD",
+	"#DEE7ED":"#E1E8ED",
 }
 
 class Shape {
