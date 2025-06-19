@@ -473,7 +473,7 @@ function parse(str, nogap) {
 				if (z && contour.length)
 					contour.pop()
 				else {
-					print('❎ unclosed path')
+					print('❎ unclosed path exact')
 					contour.push(new SegGap())
 				}
 			} else {
@@ -483,7 +483,7 @@ function parse(str, nogap) {
 					print('path end misalign?', start.Subtract(pos).fmt())
 					contour.push(new SegZ())
 				} else {
-					print('❎ unclosed path')
+					print('❎ unclosed path b', start.Subtract(pos).fmt())
 					contour.push(new SegGap())
 				}
 			}
@@ -1709,7 +1709,7 @@ let root = parse_xml(xml, tag=>{
 				//*/
 				//c.transform(Matrix.Translate(-0.4277e5,-34.7441e5))
 				//c.transform(Matrix.Rotate(-45))
-				/*
+				//*
 				let avg = new Point(0,0)
 				let avgc = 0
 				for (let i=0; i<c.length; i+=2) {
@@ -1740,33 +1740,37 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Translate(-18e5,-18e5))
 				c.transform(Matrix.Rotate(-90*3))
 				c.transform(Matrix.Translate(18e5,18e5))*/
-				//*//measure angles
+				//c.transform(Matrix.Translate(0.707e5,0.707e5))
+				//c.transform({xx:1,yy:1,xy:0,yx:5.665/20,x:0,y:0})
+				/*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
-					/*if (a<0)
+					if (a<0)
 						a += 360
 					a = a % 90
 					if (a>45)
-					a = 90-a*/
-					angles.push(a)
-					//console.warn(a)
+					a = 90-a
+					//angles.push(a)
+					console.warn(a)
 				}
+//				if (dists.length) {
+//					c.transform(Matrix.Rotate(-5.816952376493907))
+//					c.transform(Matrix.Scale(0.947647127691971))
+//				}
 				for (let i=0;i<c.length;i+=2) {
+					//dists.push(c.get(i))
+					//continue
+					
 					let seg = c.get(i+1)
 					if (seg instanceof SegC) {
-						//p_angle(seg.c1.Subtract(c.get(i)))
-						//p_angle(seg.c2.Subtract(c.get(i+2)))
+						p_angle(seg.c1.Subtract(c.get(i)))
+						p_angle(seg.c2.Subtract(c.get(i+2)))
 					}
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
 						let diff = c.get(i).Subtract(c.get(j))
-						/*let y = 7/4.041*diff.y
-						let ry = round(y, 1e5)
-						if (Math.abs(y-ry) < 0.1e5) {
-							console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
-						}*/
-						dists.push(diff.hypot())
-						//console.warn('dist', diff.hypot().fmt())
+						//dists.push(diff.hypot())
+						console.warn('dist', diff.hypot().fmt())
 						//continue
 						p_angle(diff)
 					}
@@ -1892,7 +1896,7 @@ let h = c[4].Subtract(c[0])
 				for (let cmd of commands)
 					cmd(c, tag)
 				
-				c.round(10)
+				c.round(100)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
@@ -1917,20 +1921,20 @@ let h = c[4].Subtract(c[0])
 		tag.attrs.d = d
 	}
 })
-{
+/*{
 	function adiff(a, b) {
 		return (a-b+360+180)%360-180
 	}
-	let avg = 0
-	let n = angles.length/2
+	let avg = new Point(0,0)
+	let n = dists.length/2
 	for (let i=0; i<n; i++) {
-		let d = adiff(angles[i], angles[i+n])
+		let d = dists[i].Subtract(dists[i+n])//adiff(angles[i], angles[i+n])
 		console.warn(d)
-		avg += d
+		avg = avg.Add(d)
 	}
-	avg /= n
-	console.warn("AVG_ANGLE", avg)
-}
+	avg = avg.Divide(n)
+	console.warn("AVG_OFFS", avg.fmt())
+}*/
 
 //angles = angles.filter(x=>x<1)
 //angles.sort((a,b)=>b-a)
