@@ -61,7 +61,7 @@ const fix_colors = {
 	"#DA9F83":"#D99E82",
 	"#DA9E82":"#D99E82",
 	"#292E32":"#292F33",
-	"#66757F":"#67757F",
+	"#67757F":"#66757F",
 	"#99AAB5":"#9AAAB4",
 	"#AEBBC1":"#AAB8C2",
 	"#CDD6DD":"#CCD6DD",
@@ -70,6 +70,50 @@ const fix_colors = {
 	"#E0E7EC":"#E1E8ED",
 	"#929497":"#939598",
 	"#F1F1F1":"#F1F2F2",
+	"#E9EFF3":"#E9F0F4", //stadium
+	
+	"#F4F7F9":"#F5F8FA",
+	// new ones:
+	"#FFA800":"#FFAC33", // dubious
+	"#FC8A00":"#F4900C", // dubious
+	"#DFE7ED":"#E1E8ED",
+	"#282F33":"#292F33",
+	"#CAD4DB":"#CCD6DD",
+	// moose
+	"#6C1A0D":"#662113",
+	"#282F33":"#292F33",
+	"#262B2B":"#272B2B",
+	"#C86349":"#C1694F",
+	// peapod
+	"#4E932B":"#5C913B",
+	"#9BD57F":"#A6D388",
+	"#69B546":"#77B255",
+	// jar
+	"#F19020":"#F4900C",
+	"#F9CA55":"#FFCC4D",
+	// wireless
+	"#2B87C7":"#3B88C3",
+	// old, not sure:
+	"#4B545D":"#485359", // the 'incorrect' one is more common, but the emojis it appears in tend to have other wrong colors
+	
+	"#1C6399":"#226699", // XRay and others (dubious whether this was intended, but its very close so ehh)
+	
+	// Rainbow - the orange and purple are really far off.
+	// due to color-space conversion, probably.
+	"#EB2027":"#ED1C24",
+	//"#F19020":"#F4900C",
+	"#FFCB4C":"#FFCC4D",
+	"#5C903F":"#5C913B",
+	"#226798":"#226699",
+	//"#8767AC":"#9266CC",
+	
+	// Chains
+	"#C6D5DB":"#CCD6DD", // probably
+	
+	//face clouds
+	"#F3F7F9":"#F5F8FA",
+	"#C9D5DD":"#CCD6DD",
+	"#DEE7ED":"#E1E8ED",
 }
 
 class Shape {

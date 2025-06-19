@@ -4,6 +4,8 @@
 
 // also we can store arbitrary shapes as contours by storing them as segment types (and then the previous point determines the location
 
+// todo: store whether a contour is clockwise or counterclockwise and preserve that? and another state for unknown
+
 let print = console.warn
 print() 
 
@@ -80,7 +82,7 @@ class Matrix {
 			a = -a, flipsin = true
 		a = a % 360
 		if (a >= 180)
-			a -= 180, flipsin = flipcos = true
+			a -= 180, flipsin = !flipsin, flipcos = true
 		
 		let cos, sin
 		if (a==45) {
@@ -132,10 +134,16 @@ class Matrix {
 	}
 	scale(x, y) {
 		
-	}
-	matrix(a, b, c, d, e, f) {
-		
 	}*/
+	matrix(a, b, c, d, e, f) {
+		console.warn('mtx!!!')
+		this.xx = a/1e5
+		this.yy = d/1e5
+		this.yx = b/1e5
+		this.xy = c/1e5
+		this.x = e
+		this.y = f
+	}
 	static *parse_trans(str) {
 		for (let [match,fname,args] of str.matchAll(/(?:^\s*)?(\w+)\s*[(]([^)]*)[)](?:[,\s]+(?!$)|\s*$)|[^]+/g)) {
 			if (!fname)
@@ -246,6 +254,9 @@ class SegL extends Seg {
 	Middle() {
 		return new SegL()
 	}
+	Copy() {
+		return new SegL()
+	}
 }
 SegL.prototype.letter = "l"
 
@@ -259,6 +270,9 @@ class SegGap extends Seg {
 	round() {
 	}
 	Middle() {
+		return new SegGap()
+	}
+	Copy() {
 		return new SegGap()
 	}
 }
@@ -301,6 +315,9 @@ class SegC extends Seg {
 	}
 	Middle(seg) {
 		return new SegC(this.c1.Middle(seg.c1), this.c2.Middle(seg.c2))
+	}
+	Copy() {
+		return new SegC(this.c1.Copy(), this.c2.Copy())
 	}
 }
 SegC.prototype.letter = "c"
@@ -371,6 +388,8 @@ class SegA extends Seg {
 			0,[x,y] = [y,x]
 			flip = true
 		}
+		if ((xx<0) != (yy<0))
+			flip = true
 		if (xx!=1 || yy!=1 || flip) {
 			if (this.angle==0 || x==y) {
 				this.radius.x = x * xx
@@ -409,6 +428,11 @@ class Contour extends Array {
 		// todo: what if matrix was just stored like [scale, skew, translate]. i.e. {xx,yy}, {yx,xy}, {wx,wy}. as 3 Points
 		for (let x of this)
 			x.transform(matrix)
+	}
+	Copy() {
+		// unfinished
+		print("WARNING: contour copy is unfinished")
+		return this.map(x=>x.Copy())
 	}
 }
 
@@ -449,7 +473,7 @@ function parse(str, nogap) {
 				if (z && contour.length)
 					contour.pop()
 				else {
-					print('❎ unclosed path')
+					print('❎ unclosed path exact')
 					contour.push(new SegGap())
 				}
 			} else {
@@ -459,7 +483,7 @@ function parse(str, nogap) {
 					print('path end misalign?', start.Subtract(pos).fmt())
 					contour.push(new SegZ())
 				} else {
-					print('❎ unclosed path')
+					print('❎ unclosed path b', start.Subtract(pos).fmt())
 					contour.push(new SegGap())
 				}
 			}
@@ -772,6 +796,87 @@ function check(c) {
 	}
 }
 
+function circle_to_contour(elem) {
+	let x = pnum(elem.attrs.cx||"0")
+	let y = pnum(elem.attrs.cy||"0")
+	let rx = pnum(elem.attrs.r||"0")
+	let ry = rx
+	let c = new Contour([
+		new Point(x-rx,y),
+		new SegA(new Point(rx,ry)),
+		new Point(x+rx,y),
+		new SegA(new Point(rx,ry)),
+	])
+	return c
+}
+
+function rect_to_contour(elem) {
+	//let {x=0,y=0,width=0,height=0,rx=0,ry=rx} = elem.attrs
+	let x = pnum(elem.attrs.x||"0")
+	let y = pnum(elem.attrs.y||"0")
+	let width = pnum(elem.attrs.width||"0")
+	let height = pnum(elem.attrs.height||"0")
+	let rx = pnum(elem.attrs.rx||"0")
+	let ry = pnum(elem.attrs.ry||elem.attrs.rx||"0")
+	let c
+	if (rx==0 && ry==0)
+		c = new Contour([
+			new Point(x,y),
+			new SegL(),
+			new Point(x+width,y),
+			new SegL(),
+			new Point(x+width,y+height),
+			new SegL(),
+			new Point(x,y+height),
+			new SegL(),
+		])
+	else if (height==ry*2) {
+		c = new Contour([
+			new Point(x+rx,y),
+			new SegL(),
+			new Point(x+width-rx,y),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width-rx,y+height),
+			new SegL(),
+			new Point(x+rx,y+height),
+			new SegA(new Point(rx,ry)),
+		])
+	} else if (width==rx*2) {
+		c = new Contour([
+			new Point(x,y+ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width,y+ry),
+			new SegL(),
+			new Point(x+width,y+height-ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x,y+height-ry),
+			new SegL(),
+		])
+	} else {
+		// todo: handle pill shapes as special case? (width=rx*2 or height=ry*2)
+		c = new Contour([
+			new Point(x,y+ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+rx,y),
+			new SegL(),
+			new Point(x+width-rx,y),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width,y+ry),
+			new SegL(),
+			new Point(x+width,y+height-ry),
+			new SegA(new Point(rx,ry)),
+			new Point(x+width-rx,y+height),
+			new SegL(),
+			new Point(x+rx,y+height),
+			new SegA(new Point(rx,ry)),
+			new Point(x,y+height-ry),
+			new SegL(),
+		])
+		//[radius,angle=0,large=false,sweep=true
+	}
+	return c
+}
+
 function dist(p1, p2) {
 	return Math.hypot(p2.x-p1.x, p2.y-p1.y)
 }
@@ -1021,27 +1126,22 @@ function toHex() {
 	
 }
 
-/*function balance_cubic(c, i) {
+function balance_cubic(c, i) {
 	let s1 = c.get(i-1)
 	let s2 = c.get(i+1)
+	if (s1 instanceof SegC && s2 instanceof SegC) ; else return
 	let p = c.get(i)
-	let center = new Point(0, 0)
-	console.log(s1,s2,p)
-	center.add(s1.c2)
-	center.add(p)
-	center.add(s2.c1)
-	center = center.Divide(3)
-	center.round(0.001e5)
-	
-	let vec1 = center.Subtract(s1.c2)
-	let vec2 = s2.c1.Subtract(center)
-	vec1.add(vec2)
-	let vec = vec1.Divide(2)
-	vec.round(0.001e5)
-	c[i] = center
-	s1.c2 = center.Subtract(vec)
-	s2.c1 = center.Add(vec)
-}*/
+	let d1 = s1.c2.Subtract(p)
+	let d2 = p.Subtract(s2.c1)
+	let err = d1.dist(d2)
+	if (err>=0.01e5)
+		return
+	print("BALANCING ⚖ CUBIC ", err.fmt())
+	let delta = s2.c1.Subtract(s1.c2).Divide(2)
+	delta.round(0.001e5)
+	s1.c2 = p.Subtract(delta)
+	s2.c1 = p.Add(delta)
+}
 
 function rotate(list, amount) {
 	amount %= list.length
@@ -1174,6 +1274,34 @@ function short_to_arcs(c, rad) {
 	}
 }
 
+// temp
+class Ellipse1 {
+	constructor(pos, radii, angle=0) {
+		this.pos = pos
+		this.r = radii
+		this.angle = angle
+	}
+	to_element() {
+		let elem
+		if (this.r.x==this.r.y) {
+			elem = new Element('circle')
+			elem.attrs.r = fmt(this.r.x)
+		} else {
+			elem = new Element('ellipse')
+			elem.attrs.rx = fmt(this.r.x)
+			elem.attrs.ry = fmt(this.r.y)
+		}
+		elem.empty = true
+		if (this.angle!=0)
+			elem.attrs.transform = `translate(${this.pos.fmt()}) rotate(${this.angle})`
+		else {
+			elem.attrs.cx = fmt(this.pos.x)
+			elem.attrs.cy = fmt(this.pos.y)
+		}
+		return elem
+	}
+}
+
 /* ellipsefinder */
 function see_ellipse(c) {
 	let avg = new Point(0,0)
@@ -1212,13 +1340,10 @@ function see_ellipse(c) {
 		rads.reverse()
 		aang += 90
 	}
-	if (aang)
-		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()}) rotate(${-aang})"/>`)
-	else
-		print(`<ellipse rx="${fmt(rads[1])}" ry="${fmt(rads[0])}" transform="translate(${avg.fmt()})"/>`)
+	let e = new Ellipse1(avg, new Point(rads[1],rads[0]), -aang)
+	print(e.to_element().toString())
 }
 	//*/
-
 
 
 
@@ -1324,6 +1449,10 @@ let commands = []
 while (args.length) {
 	let cmd = args.shift()
 	if (cmd=='rot') {
+		// todo: i want more commands like
+		// - rotate until we start on a point with a certain x or y coordinate
+		// - add a gap covering tab at some position based on describing features like "the longest horizontal edge" or "the left side" or something
+		//  - hmm yea like general ways of detecting features based on text descriptions
 		let amt = +args.shift()
 		commands.push(c=>{rotate(c,amt*2)})
 	}
@@ -1359,6 +1488,9 @@ while (args.length) {
 	else if (cmd=='rev') {
 		commands.push(c=>{rev1(c)})
 	}
+	else if (cmd=='hflip') {
+		commands.push(c=>{c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})})
+	}
 	else if (cmd=='see-ellipse') {
 		commands.push(c=>{see_ellipse(c)})
 	}
@@ -1382,6 +1514,16 @@ while (args.length) {
 		})
 	} else if (cmd=='corner-arcs') {
 		commands.push(c=>{replace_corner_arcs(c)})
+	} else if (cmd=='ffexp') {
+		commands.push(c=>{c.transform({xx:1/100,yy:-1/100,xy:0,yx:0,x:0,y:0})})
+	} else if (cmd=='unrect') {
+		OPT.unrect = true
+	} else if (cmd=='balance') {
+		commands.push(c=>{
+			for (let i=0; i<c.length; i+=2) {
+				balance_cubic(c, i)
+			}
+		})	
 	} else {
 		throw new Error('unknown command: '+cmd)
 	}
@@ -1397,6 +1539,7 @@ let defstyle = {
 }
 
 let angles = []
+let dists = []
 
 let root = parse_xml(xml, tag=>{
 	if (tag.name!='clipPath' && tag.parentNode?.name!='defs')
@@ -1435,12 +1578,45 @@ let root = parse_xml(xml, tag=>{
 		tag.attrs.cy = p.y.fmt()
 	}*/
 	if (tag.name=='circle') {
-		tag.attrs.cx = 36-tag.attrs.cx
+		/*let cx = pnum(tag.attrs.cx || "0")
+		let cy = pnum(tag.attrs.cy || "0")
+		x = new Point(cx,cy)*/
+		//tag.attrs.cx = 36-tag.attrs.cx
+	}
+	if (OPT.unrect) {
+		if (tag.name=='rect') {
+			print('🪠 <rect> -> <path>')
+			let c = rect_to_contour(tag)
+			delete tag.attrs.x
+			delete tag.attrs.y
+			delete tag.attrs.width
+			delete tag.attrs.height
+			delete tag.attrs.rx
+			delete tag.attrs.ry
+			tag.name = 'path'
+			tag.attrs.d = unparse_abs([c])
+		} else if (tag.name=='circle') {
+			print('🪠 <circle> -> <path>')
+			let c = circle_to_contour(tag)
+			delete tag.attrs.cx
+			delete tag.attrs.cy
+			delete tag.attrs.r
+			tag.name = 'path'
+			tag.attrs.d = unparse_abs([c])
+		}
 	}
 	if (tag.name=='path') {
 		let d = tag.attrs.d
 		let cc = parse(d, !fc)
 		d = ""
+		
+		/*if (tag.attrs.transform) {
+			let x = Matrix.SvgAttr(tag.attrs.transform)
+			for (let c of cc) {
+				c.transform(x)
+			}
+			delete tag.attrs.transform
+		}*/
 		if (OPT.unflip) {
 			let x=0,y=0
 			let tfa = OPT.unflip==3 ? tag.attrs : tag.parentNode.attrs
@@ -1486,17 +1662,19 @@ let root = parse_xml(xml, tag=>{
 			}
 			cc.push(c3)//*/
 			for (let c of cc) {
-				for (let i=0; i<c.length-2; i+=2) {
-					if (c[i].equal(c[i+2])) {
-						console.warn("🔩 zero length segment: ", c[i+1])
-						c.splice(i, 2)
-						i-=2
+				for (let i=0; i<c.length; i+=2) {
+					if (c.get(i).equal(c.get(i+2))) {
+						let zero = c.get(i+1)
+						if (!(zero instanceof SegGap)) {
+							console.warn("🔩 zero length segment: ", zero)
+							c.splice(i, 2)
+							i-=2
+						}
 					}
 				}
 				if (OPT.split)
 					first = true
-				
-				c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+				//c.transform({xx:1/100,yy:-1/100,xy:0,yx:0,x:0,y:0}); 
 				
 				if (!c.some(x=>x instanceof SegGap)) {
 					let orient = contour_orientation(c)
@@ -1504,6 +1682,8 @@ let root = parse_xml(xml, tag=>{
 					
 					//console.warn(orient, unparse_rel([c]))
 					
+					// todo: fix orientation detection for shapes with an arc near the top...
+					// e.g. <path d="M 15,7.5 v-1 a 2.5,2.5 0 00 -5,0 v1 a 2.5,2.5 0 01 2.5,-2.5 a 2.5,2.5 0 01 0.847,0.152 c 0.923,0.342 0.653,0.21 0.653,14.043 v0.305 h1 v-12 Z"/>
 					if (first ? (orient < 0) : (orient > 0)) {
 						print('REVERSING PATH to', (orient < 0) ? 'clockwise' : 'counterclockwise'); rev1(c)
 					}
@@ -1527,7 +1707,9 @@ let root = parse_xml(xml, tag=>{
 					let diff = c.get(i).Subtract(c.get(i))
 				}
 				//*/
-				/*
+				//c.transform(Matrix.Translate(-0.4277e5,-34.7441e5))
+				//c.transform(Matrix.Rotate(-45))
+				//*
 				let avg = new Point(0,0)
 				let avgc = 0
 				for (let i=0; i<c.length; i+=2) {
@@ -1535,10 +1717,10 @@ let root = parse_xml(xml, tag=>{
 					avgc++
 				}
 				avg = avg.Divide(avgc)
-				avg = avg.Subtract(new Point(18e5,18e5))
-				avg.transform(Matrix.Rotate(45))
+				//avg = avg.Subtract(new Point(18e5,18e5))
+				//avg.transform(Matrix.Rotate(45))
 				console.warn('average point:', avg.fmt())
-				*/
+				//*/
 				
 				/*for (let i=0; i<c.length; i++) {
 					let seg = c.get(i)
@@ -1555,6 +1737,11 @@ let root = parse_xml(xml, tag=>{
 				/*c.transform(Matrix.Rotate(-45))
 				c.transform(Matrix.Scale(0.647867,0.851167))
 				/*c.transform(Matrix.Translate(-0.09549e5,0))*/
+				/*c.transform(Matrix.Translate(-18e5,-18e5))
+				c.transform(Matrix.Rotate(-90*3))
+				c.transform(Matrix.Translate(18e5,18e5))*/
+				//c.transform(Matrix.Translate(0.707e5,0.707e5))
+				//c.transform({xx:1,yy:1,xy:0,yx:5.665/20,x:0,y:0})
 				/*//measure angles
 				function p_angle(diff) {
 					let a = diff.atan()
@@ -1562,10 +1749,18 @@ let root = parse_xml(xml, tag=>{
 						a += 360
 					a = a % 90
 					if (a>45)
-						a = 90-a
+					a = 90-a
+					//angles.push(a)
 					console.warn(a)
 				}
+//				if (dists.length) {
+//					c.transform(Matrix.Rotate(-5.816952376493907))
+//					c.transform(Matrix.Scale(0.947647127691971))
+//				}
 				for (let i=0;i<c.length;i+=2) {
+					//dists.push(c.get(i))
+					//continue
+					
 					let seg = c.get(i+1)
 					if (seg instanceof SegC) {
 						p_angle(seg.c1.Subtract(c.get(i)))
@@ -1574,14 +1769,9 @@ let root = parse_xml(xml, tag=>{
 					for (let j=0;j<c.length;j+=2) {
 						if (i>=j) continue
 						let diff = c.get(i).Subtract(c.get(j))
-						let y = 7/4.041*diff.y
-						let ry = round(y, 1e5)
-						if (Math.abs(y-ry) < 0.1e5) {
-							console.warn('CLOSE',y.fmt(),ry.fmt(), ry/diff.y)
-						}
-						
-						//console.warn('dist', diff.hypot().fmt())
-						continue
+						//dists.push(diff.hypot())
+						console.warn('dist', diff.hypot().fmt())
+						//continue
 						p_angle(diff)
 					}
 				}//*/
@@ -1593,12 +1783,21 @@ let root = parse_xml(xml, tag=>{
 				}
 				//transform(c, Matrix.Translate(-0.36018e5, -0.15266e5))
 				//*/
-				
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
 				//transform(c, {xx:1,yy:1,xy:0,yx:0,x:-18e5,y:0})
 /*				c.transform(Matrix.Scale(1, 1.729))
 				c.transform(Matrix.Rotate(45))*/
 				//short_to_arcs(c, 0.26e5/2)
 				//check(c)
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0}); 
+				
+				//c.transform(Matrix.Rotate(28.06))
+//				c.transform(Matrix.Translate(33.006e5,34.256e5))
+//				c.transform(Matrix.Scale(1.3873125))
+//				c.transform(Matrix.Translate(9.859e5,33e5))
+				//c.transform(Matrix.Scale(-1,1))
+				//c.transform({xx:1,yy:1,xy:0.2679491921104953,yx:0,x:0,y:0})
+				//c.transform(Matrix.Translate(0e5,4.392e5))
 				
 /*				c.splice(0, 2)
 				let nw=new Contour()
@@ -1631,6 +1830,49 @@ let root = parse_xml(xml, tag=>{
 				console.warn(lens.join("\n"))*/
 				
 				/*
+				// add indents to every other segment, where the indent point is located ~~on the perpendicular bisector at half the distance inwards~~ 1 unit left of the midpoint
+				let full = new Contour()
+				for (let i=0; i<c.length; i+=4) {
+					let a = c.get(i)
+					let b = c.get(i+2)
+					let next = c.get(i+4)
+					let spike1 = next.Subtract(b).Divide(2)
+					let spike2 = b.Add(spike1)
+					//spike1.transform(Matrix.Rotate(90))
+					spike2.add({x:-1e5,y:0})
+					full.push(a, c.get(i+1), b, new SegL(), spike2, new SegL())
+				}
+				c = full//*/
+				/*
+				// make the stripes
+				let full = new Contour()
+				for (let i=2; i<c.length; i+=4) {
+					let part = new Contour([
+						c.get(i),
+						c.get(i+1),
+						c.get(i+2),
+						new SegL(),
+					])
+					let part2 = part.Copy()
+					part2.transform({xx:-1,yy:1,xy:0,yx:0,x:36e5,y:0})
+					rev1(part2)
+					rotate(part2, 2)
+					part.push(...part2)
+					console.log(unparse_rel([part]))
+				}
+				//c = full*/
+							
+				//c.transform(Matrix.Scale(1.0024))
+				//c.transform(Matrix.Rotate(-45))
+				//c.transform({xx:-1,yy:1,xy:0,yx:0,x:36.133e5,y:-0.084e5})
+			//	c.transform({xx:-1,yy:1,xy:0,yx:0,x:0,y:0})
+			//	c.transform({xx:1,yy:1,xy:0,yx:0,x:10.09e5,y:0})
+//				c.transform(Matrix.Rotate(15))
+//				c.transform(Matrix.Translate(18e5,5e5))
+				//c.transform({xx:1,yy:-1,xy:0,yx:0,x:0,y:0})
+			//	c.transform({xx:1,yy:1,xy:0,yx:0,x:18e5,y:18e5})
+				
+				/*
 chips
 let h = c[4].Subtract(c[0])
 				let v = c[6].Subtract(c[2])
@@ -1647,12 +1889,14 @@ let h = c[4].Subtract(c[0])
 				//merge_lines(c)
 				//transform(c, Matrix.Scale(-1,1))
 				//transform(c, Matrix.Translate(-36e5,0))
-				//c.round(100)
-				
 				//check(c)
+				
+				//c.transform(Matrix.Translate(17.994e5,15.847e5))
 				
 				for (let cmd of commands)
 					cmd(c, tag)
+				
+				c.round(100)
 				
 				//c = new Contour([c[0].Middle(c[2]), new SegGap])
 				if (OPT.split) {
@@ -1677,6 +1921,21 @@ let h = c[4].Subtract(c[0])
 		tag.attrs.d = d
 	}
 })
+/*{
+	function adiff(a, b) {
+		return (a-b+360+180)%360-180
+	}
+	let avg = new Point(0,0)
+	let n = dists.length/2
+	for (let i=0; i<n; i++) {
+		let d = dists[i].Subtract(dists[i+n])//adiff(angles[i], angles[i+n])
+		console.warn(d)
+		avg = avg.Add(d)
+	}
+	avg = avg.Divide(n)
+	console.warn("AVG_OFFS", avg.fmt())
+}*/
+
 //angles = angles.filter(x=>x<1)
 //angles.sort((a,b)=>b-a)
 //let avga = angles.reduce((a,x)=>a+x,0)/angles.length

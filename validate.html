@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset=utf-8>
+
+<style>
+	@font-face {
+		font-family: 'Twemoji';
+		src: url("./build/TwemojiCOLR.otf?123") format('opentype');
+		font-display: block;
+		font-weight: bold; font-weight: 100 900;
+	}
+</style>
+<img id=$img>
+<canvas id=$canvas></canvas>
+<script src=./data/edata.js></script>
+<script>
+	function load(file) {
+		let x = new XMLHttpRequest()
+		x.open('GET', file, false)
+		x.send()
+		return x.responseText
+	}
+	
+	async function compare(glyph, size) {
+		$canvas.width = (size+2)*2
+		$canvas.height = size+2
+		let c2d = $canvas.getContext('2d')
+		{
+			c2d.fillStyle = "#FF00FF"
+			c2d.fillRect(1,1,size,size)
+			c2d.fillStyle = "black"
+			let ppem = size/1.125
+			c2d.font = `${ppem}px Twemoji`
+			c2d.fillText(glyph.emoji, -(ppem*1/32)+1, (ppem*30/32)+1)
+		}
+		let svg = load('./twemoji/assets/svg/'+glyph.file+'.svg')
+		svg = svg.replace(">", ` width="${size}" height="${size}"><rect fill="#FF00FF" width="36" height="36"/>`)
+		$img.src = 'data:image/svg+xml;base64,'+btoa(svg)
+		$img.onload = ()=>{
+			c2d.globalCompositeOperation = "difference"
+			c2d.drawImage($img,1, 1, size, size)
+		}
+	}
+	let a = EDATA.find(x=>x.emoji=="☺️")
+	compare(a, 72)
+</script>
