@@ -4,6 +4,8 @@ temp != mkdir -p build/layers
 twemoji_repo = https://github.com/12Me21/twemoji-fix-ellipses.git
 twemoji_branch = all
 
+javascript := bun run # or node
+
 .SUFFIXES:
 
 .NOTPARALLEL:
@@ -18,22 +20,22 @@ twemoji/assets/svg:
 	cd twemoji && git sparse-checkout init && git sparse-checkout set assets/svg && git checkout $(twemoji_commit)
 
 data/unicode-emoji-test.txt:
-	curl --compressed 'https://www.unicode.org/Public/emoji/16.0/emoji-test.txt' -o data/unicode-emoji-test.txt
+	curl --fail --compressed 'https://www.unicode.org/Public/17.0.0/emoji/emoji-test.txt' -o data/unicode-emoji-test.txt
 
 data/emoji-test.txt: data/unicode-emoji-test.txt data/twemoji-nonstandard.sed
 	sed -f data/twemoji-nonstandard.sed <data/unicode-emoji-test.txt >data/emoji-test.txt
 
 # parse unicode's emoji-test.txt file to create a list of emojis (and other supporting glyphs)
 build/edata.json: data/emoji-test.txt scripts/parse-emoji-test.js
-	node scripts/parse-emoji-test.js >build/edata.json
+	$(javascript) scripts/parse-emoji-test.js >build/edata.json
 
 # load the svg files and split them into layers
 build/layers.json build/glyphs.json: build/edata.json scripts/layerize.js scripts/xml.js scripts/read-svg.js twemoji/assets/svg
-	node scripts/layerize.js
+	$(javascript) scripts/layerize.js
 
 # generate the COLR and CPAL tables
 build/colr.ttx build/cpal.ttx: build/layers.json scripts/make-colr.js scripts/xml.js
-	node scripts/make-colr.js
+	$(javascript) scripts/make-colr.js
 
 scripts/fontforge.py scripts/font2.py: scripts/common.py
 

@@ -6,12 +6,12 @@ if any preexisting emojis were changed on their end, resolve these manually (if 
 
 2: see if any new designs need fixing (if we have time)
 
-3: push
+3: push (edit: i think this needs to be forced bc of the rebase)
 
 in twemoji-COLR:
 
 1: if we have a new unicode emoji version:
-- in the Makefile, update the version number in the emoji-test.txt url (https://www.unicode.org/Public/emoji/<VER>/emoji-test.txt)
+- in the Makefile, update the version number in the emoji-test.txt url (https://www.unicode.org/Public/<VER.0.0>/emoji/emoji-test.txt (or https://www.unicode.org/Public/emoji/<VER.0>/emoji-test.txt before 17.0.0))
 - `rm data/unicode-emoji-test.txt`
 2: update the data folder:
 - `git pull -C twemoji`
