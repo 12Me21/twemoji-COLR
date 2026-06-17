@@ -18,7 +18,7 @@ in twemoji-COLR:
 3: build font
 - `make`
 4: update the demo pages
-- `node ./scripts/postprocess-emoji-test.js >./data/edata.js` (for demo1.html)
+- `bun run ./scripts/postprocess-emoji-test.js >./data/edata.js` (for demo1.html)
 - update demo2.html (how?)
  - (tbh to update the list on this page i just copied the text off demo.html and added <li> between them)
 - bump the anti-cache query string on the font urls
