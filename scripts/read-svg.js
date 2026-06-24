@@ -114,6 +114,37 @@ const fix_colors = {
 	"#F3F7F9":"#F5F8FA",
 	"#C9D5DD":"#CCD6DD",
 	"#DEE7ED":"#E1E8ED",
+	
+	// rootvegetable:
+	"#688F47": "#5C913B",
+	"#AD2D36": "#BE1931",
+	
+	// trombone
+	"#FFC34A": "#FFCC4D",
+	"#FFEA94": "#FFE8B6",
+	//harp
+	"#E59438": "#F4900C",
+	"#EFAE56": "#FFAC33",
+	"#CDD5DB": "#CCD6DD",
+	// shovel
+	"#8A97A4": "#8899A6",
+	"#69757E": "#66757F",
+	// LeaflessTree
+	"#5E2618": "#662113",
+	
+	// ok now theyre just using random colors
+/*	// Orca
+	"#C3CEE0": "#CCD6DD",
+	"#8496AF": "#8899A6",
+	// FightCloud
+	"#FF7C33": "#F4900C",
+	"#B5C3C9": "#AAB8C2",
+	"#DFE8ED": "#E1E8ED",
+	"#626365": "#66757F",
+	"#8F80EB": "#9266CC",
+	// Landslide
+	"#B4B5B8": "#AAB8C2",
+	"#869193", "#8899A6",*/
 }
 
 class Shape {
