@@ -71,6 +71,7 @@ couples = {
 	"k": (person_list, gnames("‍❤‍💋"), gnames("‍"), person_list),
 	"wh": (person_list, gnames("‍❤"), gnames("‍"), person_list),
 	"be": (person_list, gnames("‍🐰"), gnames("‍"), person_list),
+	"w": (person_list, gnames("‍🫯"), gnames("‍"), person_list),
 }
 
 # destroy couple emojis !!

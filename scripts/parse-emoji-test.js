@@ -81,7 +81,10 @@ let decouples = {
 	//...skin("🤝?", ["🫱?","‍","🫲?"]), don't decouple these i guess, because the matching skintone handshakes are a special case where they shift the color of one hand to make it stand out more
 	...skin("👯?‍♀️", ["👩?","‍","🐰","‍","👩?"]),
 	...skin("👯?‍♂️", ["👨?","‍","🐰","‍","👨?"]),
-	...skin("👯?", ["🧑?","‍","🐰","‍","🧑?"]), // make sure this one is after the other bunny suit ones bc greedy matching
+	...skin("👯?", ["🧑?","‍","🐰","‍","🧑?"]), // last in case of greedy matching
+	...skin("🤼?‍♀️", ["👩?","‍","🫯","‍","👩?"]),
+	...skin("🤼?‍♂️", ["👨?","‍","🫯","‍","👨?"]),
+	...skin("🤼?", ["🧑?","‍","🫯","‍","🧑?"]),
 }
 
 let hardcoded_couples = {
@@ -95,6 +98,9 @@ let hardcoded_couples = {
 	...skin("👯?‍♀️", "👩?‍🐰‍👩?"),
 	...skin("👯?‍♂️", "👨?‍🐰‍👨?"),
 	...skin("👯?", "🧑?‍🐰‍🧑?"),
+	...skin("🤼?‍♀️", "👩?‍🫯‍👩?"),
+	...skin("🤼?‍♂️", "👨?‍🫯‍👨?"),
+	...skin("🤼?", "🧑?‍🫯‍🧑?"),
 }
 
 function decode_couple(str) {
@@ -106,10 +112,14 @@ function decode_couple(str) {
 		let [_,person1,person2] = m
 		return {type:'hs',people:[person1, person2],hardcoded:!!hardcoded}
 	}
-	m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️|🐰)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
+	m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️|🐰|🫯)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
 	if (m) {
 		let [_,person1,type,person2] = m
-		type = {"🤝":"hh","❤️‍💋":"k","❤️":"wh","🐰":"be"}[type]
+		type = {"🤝":"hh","❤️‍💋":"k","❤️":"wh","🐰":"be","🫯":"w"}[type]
+		// todo: it would be nice if we had a single data file that, for each couple type, described:
+		// - the joiner sequence
+		// - the list of hardcoded forms
+		// - (info needed to split the source files into halfs)
 		return {type, people:[person1, person2], hardcoded:!!hardcoded}
 	}
 	return null

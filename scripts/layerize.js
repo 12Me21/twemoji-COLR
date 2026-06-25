@@ -18,12 +18,12 @@ function merge_shapes(p1) {
 	return paths
 }
 
-function split_in_half(paths) {
+function split_in_half(paths, override) {
 	let all = []
 	for (let [p,c] of paths)
 		for (let s of p)
 			all.push([[s],c])
-	let split = [all.splice(0, all.length/2), all]
+	let split = [all.splice(0, override || all.length/2), all]
 	// note that this doesn't re-merge by color !
 	return split
 }
@@ -60,7 +60,17 @@ for (let em of edata) {
 	let paths = process_svg(filename)
 	// hack
 	if (em.couple) {
-		let halfs = split_in_half(paths)
+		let override = undefined
+		// extra hack (wrestlers emojis aren't symmetrical)
+		if (em.file.startsWith("1f93c-")) {
+			if (em.file.includes("-2640-"))
+				override = 12 // f wrestler
+			else if (em.file.includes("-2642-"))
+				override = 11 // m wrestler
+			else
+				override = 11 // x wrestler
+		}
+		let halfs = split_in_half(paths, override)
 		if (em.couple[2]=="left")
 			paths = halfs[0]
 		else
