@@ -279,7 +279,8 @@ export function process_svg(filename) {
 			// todo: ellipses use transform=rotate(angle,cx,cy), but sometimes this contains rounding errors
 		}
 		if (name=="path") {
-			attrs.d += "Z" // fontforge bug?: doesn't auto-close the last path
+			// annoying people don't close paths
+			attrs.d = attrs.d.replace(/(?:$|m|M)/g, "Z$&")
 			addShape(new Path(attrs), fill)
 		} else if (name=="circle" || name=="ellipse") {
 			addShape(new Ellipse(attrs), fill)
