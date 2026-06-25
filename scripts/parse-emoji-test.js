@@ -79,9 +79,9 @@ let decouples = {
 	...skin("💏?", ["🧑?","‍","❤","‍","💋","‍","🧑?"]),
 	...skin("💑?", ["🧑?","‍","❤","‍","🧑?"]),
 	//...skin("🤝?", ["🫱?","‍","🫲?"]), don't decouple these i guess, because the matching skintone handshakes are a special case where they shift the color of one hand to make it stand out more
-	...skin("👯?", ["🧑?","‍","🐰","‍","🧑?"]),
-	...skin("👯?‍♂️", ["👨?","‍","🐰","‍","👨?"]),
 	...skin("👯?‍♀️", ["👩?","‍","🐰","‍","👩?"]),
+	...skin("👯?‍♂️", ["👨?","‍","🐰","‍","👨?"]),
+	...skin("👯?", ["🧑?","‍","🐰","‍","🧑?"]), // make sure this one is after the other bunny suit ones bc greedy matching
 }
 
 let hardcoded_couples = {
@@ -92,24 +92,25 @@ let hardcoded_couples = {
 	...skin("💏?", "🧑?‍❤️‍💋‍🧑?"),
 	...skin("💑?", "🧑?‍❤️‍🧑?"),
 	...skin("🤝?", "🫱?‍🫲?"),
-	...skin("👯?", "🧑?‍🐰‍🧑?"),
-	...skin("👯?‍♂️", "👨?‍🐰‍👨?"),
 	...skin("👯?‍♀️", "👩?‍🐰‍👩?"),
+	...skin("👯?‍♂️", "👨?‍🐰‍👨?"),
+	...skin("👯?", "🧑?‍🐰‍🧑?"),
 }
 
 function decode_couple(str) {
-	str = hardcoded_couples[str] || str
+	let hardcoded = hardcoded_couples[str]
+	str = hardcoded || str
 	let m
 	m = /^(🫱[🏻-🏿]?)‍(🫲[🏻-🏿]?)$/u.exec(str)
 	if (m) {
 		let [_,person1,person2] = m
-		return {type:'hs',people:[person1, person2]}
+		return {type:'hs',people:[person1, person2],hardcoded:!!hardcoded}
 	}
 	m = /^([🧑👨👩][🏻-🏿]?)‍(🤝|❤️‍💋|❤️|🐰)‍([🧑👨👩][🏻-🏿]?)$/u.exec(str)
 	if (m) {
 		let [_,person1,type,person2] = m
 		type = {"🤝":"hh","❤️‍💋":"k","❤️":"wh","🐰":"be"}[type]
-		return {type, people:[person1, person2]}
+		return {type, people:[person1, person2], hardcoded:!!hardcoded}
 	}
 	return null
 }
@@ -160,7 +161,17 @@ for await (let line of lines('data/emoji-test.txt')) {
 			})
 		}
 		// we need to keep the hardcoded versions, because they will appear in the wild and need to be decomposed
-		if (codes.length > 2)
+		// ok wait, but why? aside from the single-codepoint ones (which we want to keep anyway for renderers which don't support ligatures), we shouldn't have to generate glyphs for e.g. 👯<skin> because we can have a substitution directly from that to 🧑<skin><zwj>🐰<zwj>🧑<skin>, right?
+		// except, for now we need to keep these in the list, because layerize.js needs at least all of the symmetrical versions to split into halfs..
+		// anyway so basically, right now we have 2 types:
+		// - general form couples (<person><zwj><thing><zwj><person>) - we don't create glyphs for these, they are composed to halfs
+		// - hardcoded couples emojis (these map to general form, and the symmetrical ones are also used as sources for layerize.js)
+		// but what we want to do is:
+		// - general form couples - no glyphs, sequences composed to halfs
+		// - other composed couples (e.g. <couple><skin>) - no glyphs, decomposed to general form and then to halfs
+		// - single-codepoint couples - these get glyphs, for compat, and are decomposed to general form
+		// AND, at the same time, we should pass a list of all the symmetrical couples to layerize.js so they can be split to create the halfs
+		if (!couple.hardcoded)
 			continue
 		// todo: for these, we can reuse the layers from the halfcouple glyphs. this is probably already the case due to regular layer reuse, however if we're tricky we can like, overlap  in the COLR table.
 		// like say,  holding hands (man, left half) followed by holding hands (man, right half). then, the men holding hands can refer to that whole span of the colr table.
